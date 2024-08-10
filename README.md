@@ -1,2 +1,2 @@
-# DOGS
-An addon that streamlines Blender's 3D modeling capabilities by introducing a comprehensive suite of tools for avatar creation.
+# DOGS (Dynamic Optimization Graphics Suite)
+This addon enhances Blender's functionality with a focus on VR model preparation and optimization offering features like armature creation, scene and armature statistics, mesh editing, and export options to game engines and texture software.
