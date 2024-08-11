@@ -1,6 +1,6 @@
 # DOGS
 
-!!! The addon is still WIP; crashes to be expected !!!
+!!! The addon is still WIP; this is the first code pass so it is super badly written and crashes are to be expected !!!
 
 First thing first: DOGS are not CATS!
 
