@@ -4,6 +4,6 @@
 
 First thing firts DOGS are not CATS!
 
-This addon is not aiming to be a replacment for the CATS Blender addon!
+This add-on is not intended to replace the CATS Blender add-on, so please don't consider it as such!
 
 This addon enhances Blender's functionality with a focus on VR model preparation and optimization offering features like armature creation, scene and armature statistics, mesh editing, and export options to game engines and texture software.
