@@ -9,6 +9,8 @@ This add-on is not intended to replace the CATS Blender add-on, so please don't 
 ![image](https://github.com/user-attachments/assets/b0a06258-c76a-4aaf-9142-1bc1e9da18c5)
 
 
+Addon is for Bledner 4.2.0 + !
+
 To install, just click the download button below. In Blender, go to **Edit** -> **Preferences** -> **Add-ons** -> **Install** and select the zip file that you downloaded.
 
 Don't forget to enable the add-on after installing it!
