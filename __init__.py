@@ -7,15 +7,7 @@ from bpy_extras.io_utils import ImportHelper
 
 bl_info = {
     "name": "DOGS",
-    "description": (
-        "This add-on provides a comprehensive suite of tools for managing and "
-        "editing armatures and meshes in Blender. Features include adding and "
-        "configuring predefined armature types (Basic, Extended, and Digitigrade), "
-        "performing advanced mesh editing operations, and managing bone collections "
-        "with enhanced controls for rigging. Additionally, it offers "
-        "detailed scene and armature statistics, optimized for both PC and Portable "
-        "platforms, to help users maintain performance-friendly models."
-    ),
+    "description": ("This add-on enhances 3D model creation and optimization in Blender with tools for importing models, managing armatures and meshes, and evaluating model statistics. It supports humanoid armature types and offers compatibility ratings for different devices."),
     "author": "Marek Hanzelka",
     "version": (0, 0, 1),
     "blender": (4, 2, 0),
