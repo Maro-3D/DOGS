@@ -6,7 +6,8 @@ First thing first: DOGS are not CATS!
 
 This add-on is not intended to replace the CATS Blender add-on, so please don't consider it as such!
 
-![image](https://github.com/user-attachments/assets/3df6fe75-d595-4369-a940-b366d154f652)
+![image](https://github.com/user-attachments/assets/b0a06258-c76a-4aaf-9142-1bc1e9da18c5)
+
 
 To install, just click the download button below. In Blender, go to **Edit** -> **Preferences** -> **Add-ons** -> **Install** and select the zip file that you downloaded.
 
