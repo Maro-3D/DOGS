@@ -1356,6 +1356,12 @@ class MESH_OT_SeparateBySelection(Operator):
         if active_object.mode != 'EDIT':
             cls.poll_message_set("Active object is not in edit mode.")
             return False
+        
+        # Check if there are any selected faces
+        bm = bmesh.from_edit_mesh(active_object.data)
+        if not any(face.select for face in bm.faces):
+            cls.poll_message_set("No faces selected.")
+            return False
 
         return True
 
