@@ -7,7 +7,15 @@ from bpy_extras.io_utils import ImportHelper
 
 bl_info = {
     "name": "DOGS",
-    "description": ("This add-on enhances 3D model creation and optimization in Blender with tools for importing models, managing armatures and meshes, and evaluating model statistics. It supports humanoid armature types and offers compatibility ratings for different devices."),
+    "description": (
+        "This add-on provides a comprehensive suite of tools for managing and "
+        "editing armatures and meshes in Blender. Features include adding and "
+        "configuring predefined armature types (Basic, Extended, and Digitigrade), "
+        "performing advanced mesh editing operations, and managing bone collections "
+        "with enhanced controls for rigging. Additionally, it offers "
+        "detailed scene and armature statistics, optimized for both PC and Portable "
+        "platforms, to help users maintain performance-friendly models."
+    ),
     "author": "Marek Hanzelka",
     "version": (0, 0, 1),
     "blender": (4, 2, 0),
@@ -554,6 +562,7 @@ class STATS_PT_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'DOGS'
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -614,6 +623,7 @@ class MESH_EDIT_PT_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'DOGS'
+    bl_options = {'DEFAULT_CLOSED'}
 
     # Define the panel UI layout
     def draw(self, context):
@@ -636,7 +646,6 @@ class MESH_EDIT_PT_panel(Panel):
             sub.label(text="Join Mesh:")
             sub.operator("object.join", text="Selected")
             sub.operator("object.join_visible", text="Visible")
-            sub.operator("object.join_all", text="All")
 
             sub = box.row(align=True)
             sub.label(text="Separate By:")
@@ -650,7 +659,7 @@ class MESH_EDIT_PT_panel(Panel):
             sub.operator("mesh.separate_by_loose_parts", text="Loose Parts", icon="STICKY_UVS_DISABLE")
             sub.operator("mesh.separate_by_materials", text="Materials", icon="MATERIAL")
             sub = box.row(align=True)
-            sub.operator("object.explode_model", text="Explode", icon="FORCE_TURBULENCE")
+            sub.operator("object.explode_model", text="Explode Selected Objects", icon="FORCE_TURBULENCE")
             
             # ----------------- Normals -----------------
             row = layout.row(align=True)
@@ -690,6 +699,7 @@ class ARMATURE_EDIT_PT_panel(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'DOGS'
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -747,9 +757,9 @@ class ARMATURE_EDIT_PT_panel(Panel):
             
                 bone_color_box.prop(obj.data, "show_bone_colors", text="Enable Bone Colors")
                 bone_color_box.prop(active_bone.color, "palette", text="Bone Color")
-                props = bone_color_box.operator("armature.copy_bone_color_to_selected", text="Copy Color to Selected")
+                props = bone_color_box.operator("armature.copy_bone_color_to_selected", text="Copy Active Color to Selected")
                 props.bone_type = 'EDIT'
-                bone_color_box.operator("armature.copy_bone_color_to_collection", text="Copy Active Bone Color to Collection")
+                bone_color_box.operator("armature.copy_bone_color_to_collection", text="Copy Active Color to Collection")
             
             else:
                 bone_color_box.label(text="No Bone Selected!", icon="ERROR")
@@ -795,7 +805,8 @@ class WEIGHT_PAINT_EDIT_PT_panel(Panel):
     bl_idname = "WEIGHT_PAINT_EDIT_PT_panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'DOGS'  # Ensure this matches the existing category for consistency
+    bl_category = 'DOGS'
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -812,59 +823,55 @@ class WEIGHT_PAINT_EDIT_PT_panel(Panel):
 
         row = layout.row()
 
-        if obj and obj.type == 'MESH' and armature_name != "None":
-            # Update button text and icon based on current mode
+        
 
-            if context.mode == 'PAINT_WEIGHT':
-                row.operator('object.toggle_weight_paint', text="Exit Weight Paint Mode", icon='RADIOBUT_ON')
-                row = layout.row()
-                row.alignment = 'CENTER'
-                row.label(text="Weight Paint Options", icon="WPAINT_HLT")
-                box = layout.box()
-                box.prop(overlay, "show_wpaint_contours", text="Show Weight Paint Contours")
-                box.prop(overlay, "show_paint_wire", text="Show Wireframe")
-               
-                #Made as default
-                #box.prop(tool_settings, "use_auto_normalize", text="Auto Normalize Weights")
-               
-                box.prop(tool_settings.weight_paint, "use_group_restrict", text="Paint Only in Selected Vertex Group")
-               
-                box.prop(scene, "paint_through_mesh", text="Paint Through Mesh")
-                
-                box_row = box.row(align=True)
+        if context.mode == 'PAINT_WEIGHT':
+            row.operator('object.toggle_weight_paint', text="Exit Weight Paint Mode", icon='RADIOBUT_ON')
+            row = layout.row()
+            row.alignment = 'CENTER'
+            row.label(text="Weight Paint Options", icon="WPAINT_HLT")
+            box = layout.box()
+            box.prop(overlay, "show_wpaint_contours", text="Show Weight Paint Contours")
+            box.prop(overlay, "show_paint_wire", text="Show Wireframe")
+           
+            #Made as default
+            #box.prop(tool_settings, "use_auto_normalize", text="Auto Normalize Weights")
+           
+            box.prop(tool_settings.weight_paint, "use_group_restrict", text="Paint Only in Selected Vertex Group")
+           
+            box.prop(scene, "paint_through_mesh", text="Paint Through Mesh")
+            
+            box_row = box.row(align=True)
 
-                if armature:
-                    box_row.enabled = True
-                else:
-                    box_row.enabled = False
-                
-                box_row.prop(armature.pose, "use_mirror_x", text="Mirror Bone Pose in X Axis", expand=True, icon='OUTLINER_DATA_ARMATURE')
-                box_row.operator('object.reset_pose', text="", icon='LOOP_BACK')
-                
-                
-                pivot_icon = 'PIVOT_INDIVIDUAL' if context.scene.tool_settings.transform_pivot_point == 'INDIVIDUAL_ORIGINS' else 'PIVOT_MEDIAN'
-                box_row.operator('object.toggle_pivot_point', text="", icon=pivot_icon)
-
-                row = layout.row()
-                row.alignment = 'CENTER'
-                row.label(text="Weight Paint Functions", icon="MOD_VERTEX_WEIGHT")
-                box = layout.box()
-                
-                box.operator("object.vertex_group_clean", text="Clean Vertex Groups", icon="TRASH")
-                
-                box_fill = box.row()
-                
-                box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 0 Weight").weight_value = 0.0
-                box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 1 Weight").weight_value = 1.0
-
-                
+            if armature:
+                box_row.enabled = True
             else:
+                box_row.enabled = False
+            
+            box_row.prop(armature.pose, "use_mirror_x", text="Mirror Bone Pose in X Axis", expand=True, icon='OUTLINER_DATA_ARMATURE')
+            box_row.operator('object.reset_pose', text="", icon='LOOP_BACK')
+            
+            
+            pivot_icon = 'PIVOT_INDIVIDUAL' if context.scene.tool_settings.transform_pivot_point == 'INDIVIDUAL_ORIGINS' else 'PIVOT_MEDIAN'
+            box_row.operator('object.toggle_pivot_point', text="", icon=pivot_icon)
 
-                row.operator('object.toggle_weight_paint', text="Enter Weight Paint Mode", icon='RADIOBUT_OFF')
+            row = layout.row()
+            row.alignment = 'CENTER'
+            row.label(text="Weight Paint Functions", icon="MOD_VERTEX_WEIGHT")
+            box = layout.box()
+            
+            box.operator("object.vertex_group_clean", text="Clean Vertex Groups", icon="TRASH")
+            
+            box_fill = box.row()
+            
+            box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 0 Weight").weight_value = 0.0
+            box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 1 Weight").weight_value = 1.0
+            
+                
         else:
-            # Grayed out button if not a mesh
-            row.enabled = False
+
             row.operator('object.toggle_weight_paint', text="Enter Weight Paint Mode", icon='RADIOBUT_OFF')
+
 
 # Operator to color bones in selected bone collection
 class ARMATURE_OT_CopyBoneColorToCollection(bpy.types.Operator):
@@ -875,11 +882,17 @@ class ARMATURE_OT_CopyBoneColorToCollection(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        # Ensure there is an active object that is an armature and has a bone collection
         obj = context.object
-        armature_data = obj.data
-        return obj is not None and obj.type == 'ARMATURE' and armature_data.collections
 
+        # Check if the armature has a bone collection
+        armature_data = obj.data
+        if not hasattr(armature_data, "collections") or not armature_data.collections:
+            cls.poll_message_set("The armature does not have a bone collection.")
+            return False
+
+        # All conditions are met
+        return True
+    
     def execute(self, context):
         
         obj = context.object
@@ -897,7 +910,7 @@ class ARMATURE_OT_CopyBoneColorToCollection(bpy.types.Operator):
 
 
 class AssignVerticesToActiveGroup(bpy.types.Operator):
-    """Assign all vertices to the active vertex group"""
+    """Bucket fill vertecies with the selected weight"""
     bl_idname = "object.assign_vertices_to_active_group"
     bl_label = "Assign All Vertices to Active Vertex Group"
     bl_options = {'REGISTER', 'UNDO'}
@@ -912,25 +925,30 @@ class AssignVerticesToActiveGroup(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        # Ensure there is an active object that is an armature and has a bone collection
         obj = context.object
-        return obj.vertex_groups.active is not None
+
+        # Check if there is an active object
+        if obj is None:
+            cls.poll_message_set("No active object selected.")
+            return False
+
+        # Check if the active object has an active vertex group
+        if obj.vertex_groups.active is None:
+            cls.poll_message_set("The active object does not have an active vertex group.")
+            return False
+
+        # All conditions are met
+        return True
 
     def execute(self, context):
-        obj = context.object
         
-        weight_to_fill = self.weight_value
+        original_paint_settings_weight = bpy.context.scene.tool_settings.unified_paint_settings.weight
         
-        # Get the active vertex group
-        vertex_group = obj.vertex_groups.active
-        
-        # Get index of all vertices
-        vertices = [v.index for v in obj.data.vertices]
-        
+        bpy.context.scene.tool_settings.unified_paint_settings.weight = self.weight_value
 
-        # Replace all vertices to the active vertex group
-        vertex_group.add(vertices, weight_to_fill, 'REPLACE')
+        bpy.ops.paint.weight_set()
 
+        bpy.context.scene.tool_settings.unified_paint_settings.weight = original_paint_settings_weight
         
         return {'FINISHED'}
 
@@ -938,10 +956,33 @@ class AssignVerticesToActiveGroup(bpy.types.Operator):
 
 # Operator to switch to Weight Paint Mode or Object Mode
 class OBJECT_OT_ToggleWeightPaint(Operator):
+    """Toggle Weight Paint Mode on or off"""
     bl_idname = "object.toggle_weight_paint"
     bl_label = "Toggle Weight Paint Mode"
-    bl_description = "Toggle Weight Paint Mode on or off"
 
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+        
+        # Check if there is an active object
+        if obj is None:
+            cls.poll_message_set("No active object selected.")
+            return False
+
+        # Check if the active object is a mesh
+        if obj.type != 'MESH':
+            cls.poll_message_set("The active object is not a mesh.")
+            return False
+
+        # Check if a valid armature is selected in the scene
+        armature_name = context.scene.selected_armature
+        if armature_name == "None":
+            cls.poll_message_set("No armature is in the scene.")
+            return False
+
+        # All conditions are met
+        return True
+    
     def execute(self, context):
         obj = context.object
 
@@ -984,7 +1025,7 @@ class OBJECT_OT_ToggleWeightPaint(Operator):
         return {'FINISHED'}
 
 class OBJECT_OT_explode_model(bpy.types.Operator):
-    """Exaplode the selected objects"""
+    """Move the selected objects from each other in the "Explosion" style"""
     bl_idname = "object.explode_model"
     bl_label = "Explode Model"
     bl_options = {'REGISTER', 'UNDO'}
@@ -999,15 +1040,18 @@ class OBJECT_OT_explode_model(bpy.types.Operator):
     
     @classmethod
     def poll(cls, context):
-        # Check if the user is in Object Mode
+    # Check if the current mode is Object mode
         if context.mode != 'OBJECT':
+            cls.poll_message_set("The current mode is not Object mode.")
             return False
-        
+
         # Check if at least two objects are selected
         selected_objects = context.selected_objects
         if len(selected_objects) < 2:
+            cls.poll_message_set("At least two objects must be selected.")
             return False
-        
+
+        # All conditions are met
         return True
     
     def execute(self, context):
@@ -1022,8 +1066,7 @@ class OBJECT_OT_explode_model(bpy.types.Operator):
             self.report({'WARNING'}, "Select a mesh object")
             return {'CANCELLED'}
 
-        if transform_pivot_point != 'BOUNDING_BOX_CENTER':
-            transform_pivot_point = 'BOUNDING_BOX_CENTER'
+        bpy.context.scene.tool_settings.transform_pivot_point = 'BOUNDING_BOX_CENTER'
         
         bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
         
@@ -1117,9 +1160,9 @@ class OBJECT_OT_ParentMeshToArmature(Operator):
 
 # Custom Operator to reset pose and maintain original selection
 class OBJECT_OT_ResetPose(Operator):
+    """Reset the pose of all bones and restore the original selection"""
     bl_idname = "object.reset_pose"
     bl_label = "Reset Pose"
-    bl_description = "Reset the pose of all bones and restore the original selection"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
@@ -1177,8 +1220,13 @@ class OBJECT_OT_TogglePivotPoint(Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.area.type == 'VIEW_3D'
-
+            # Check if the active area is the 3D Viewport
+        if context.area.type != 'VIEW_3D':
+            cls.poll_message_set("The current area is not the 3D Viewport.")
+            return False
+        
+        return True
+    
     def execute(self, context):
         current_pivot = context.scene.tool_settings.transform_pivot_point
         new_pivot = 'INDIVIDUAL_ORIGINS' if current_pivot == 'MEDIAN_POINT' else 'MEDIAN_POINT'
@@ -1188,36 +1236,85 @@ class OBJECT_OT_TogglePivotPoint(Operator):
 
 # Operator to join visible objects
 class OBJECT_OT_JoinVisible(Operator):
+    """Join only visible mesh objects"""
     bl_idname = "object.join_visible"
     bl_label = "Join Visible"
-    bl_description = "Join all visible objects"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
-        return context.selected_objects
+        # Check if there are any visible objects
+        visible_objects = any(
+            obj.visible_get() and obj.type == 'MESH' for obj in context.visible_objects
+        )
+
+        if not visible_objects:
+            cls.poll_message_set("No visible mesh objects in the scene.")
+            return False
+
+        # Check if the current mode is Object mode
+        if context.mode != 'OBJECT':
+            cls.poll_message_set("The current mode is not Object mode.")
+            return False
+
+        # All conditions are met
+        return True
 
     def execute(self, context):
-        bpy.ops.object.select_all(action='DESELECT')
-        for obj in context.visible_objects:
+        # Ensure we're in Object mode
+        if context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Find all visible mesh objects
+        visible_mesh_objects = [
+            obj for obj in context.visible_objects
+            if obj.type == 'MESH' and obj.visible_get()
+        ]
+
+        # Check if there are any visible mesh objects
+        if not visible_mesh_objects:
+            self.report({'WARNING'}, "No visible mesh objects to join.")
+            return {'CANCELLED'}
+
+        # Select all visible mesh objects
+        for obj in visible_mesh_objects:
             obj.select_set(True)
+
+        # Set the active object to the first one in the list
+        context.view_layer.objects.active = visible_mesh_objects[0]
+
+        # Join all selected objects
         bpy.ops.object.join()
+
+        self.report({'INFO'}, f"Joined {len(visible_mesh_objects)} mesh objects.")
         return {'FINISHED'}
 
 
 # Operator to toggle pose mode for the selected armature
 class OBJECT_OT_TogglePoseMode(Operator):
+    """Toggle Pose Mode for the selected armature"""
     bl_idname = "object.toggle_pose_mode"
     bl_label = "Toggle Pose Mode"
-    bl_description = "Toggle Pose Mode for the selected armature"
     
 
     @classmethod
     def poll(cls, context):
         obj = context.active_object
-        
-        # Ensure the operator is only active when an armature is selected
-        return obj and obj.type == 'ARMATURE' and context.active_object.mode != 'WEIGHT_PAINT'
+
+        if obj is None:
+            cls.poll_message_set("No active object selected.")
+            return False
+
+        if obj.type != 'ARMATURE':
+            cls.poll_message_set("The active object is not an armature.")
+            return False
+
+        if obj.mode == 'WEIGHT_PAINT':
+            cls.poll_message_set("The armature is in weight paint mode.")
+            return False
+
+        # All conditions are met
+        return True
 
     def execute(self, context):
         
@@ -1237,32 +1334,30 @@ class OBJECT_OT_TogglePoseMode(Operator):
         return {'CANCELLED'}
 
 
-# Operator to join all objects
-class OBJECT_OT_JoinAll(Operator):
-    bl_idname = "object.join_all"
-    bl_label = "Join All"
-    bl_description = "Join all objects"
-
-    @classmethod
-    def poll(cls, context):
-        return context.selected_objects
-
-    def execute(self, context):
-        bpy.ops.object.select_all(action='SELECT')
-        bpy.ops.object.join()
-        return {'FINISHED'}
-
-
 # Operator for separating by selection
 class MESH_OT_SeparateBySelection(Operator):
+    """Separates a mesh based on the selected faces"""
     bl_idname = "mesh.separate_by_selection"
     bl_label = "Separate by Selection"
-    bl_description = "Separate mesh by selected faces"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
-        return context.object is not None and context.object.type == 'MESH' and context.object.mode == 'EDIT'
+        active_object = context.object
+        
+        if active_object is None:
+            cls.poll_message_set("No active object in the context.")
+            return False
+
+        if active_object.type != 'MESH':
+            cls.poll_message_set("Active object is not a mesh.")
+            return False
+
+        if active_object.mode != 'EDIT':
+            cls.poll_message_set("Active object is not in edit mode.")
+            return False
+
+        return True
 
     def execute(self, context):
         bpy.ops.mesh.separate(type='SELECTED')
@@ -1271,9 +1366,9 @@ class MESH_OT_SeparateBySelection(Operator):
 
 # Operator for separating by loose parts
 class MESH_OT_SeparateByLooseParts(Operator):
+    """Separates a mesh based on its loose, unconnected parts"""
     bl_idname = "mesh.separate_by_loose_parts"
     bl_label = "Separate by Loose Parts"
-    bl_description = "Separate mesh by loose parts"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
@@ -1281,15 +1376,43 @@ class MESH_OT_SeparateByLooseParts(Operator):
         return context.object is not None and context.object.type == 'MESH'
 
     def execute(self, context):
+        
+        #I would love to use just bpy.ops.mesh.separate(type='LOOSE') but currently it breaks normals when used this issue was 
+        #reported 2022 not fixed to this day.
+        
+        # Check the current mode
+        initial_mode = bpy.context.active_object.mode
+        
+        # Ensure there is an active object and it is a mesh
+        active_object = bpy.context.active_object
+        if active_object is None or active_object.type != 'MESH':
+            print("No active mesh object selected.")
+            return
+
+        # If not already in Edit Mode, switch to Edit Mode
+        if initial_mode != 'EDIT':
+            bpy.ops.object.mode_set(mode='EDIT')
+        
+        # Select all geometry in Edit Mode
+        bpy.ops.mesh.select_all(action='SELECT')
+        
+        # Separate by loose parts
         bpy.ops.mesh.separate(type='LOOSE')
+        
+        # Deselect all geometry
+        bpy.ops.mesh.select_all(action='DESELECT')
+        
+        # Switch back to Object Mode if it was the initial mode
+        if initial_mode != 'EDIT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
         return {'FINISHED'}
-
-
+    
 # Operator for separating by materials
 class MESH_OT_SeparateByMaterials(Operator):
+    """Separates a mesh based on the materials assigned to its faces"""
     bl_idname = "mesh.separate_by_materials"
     bl_label = "Separate by Materials"
-    bl_description = "Separate mesh by materials"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
@@ -1303,6 +1426,7 @@ class MESH_OT_SeparateByMaterials(Operator):
 
 # Operator for importing models
 class ImportModelOperator(Operator, ImportHelper):
+    """Import 3D model in to the scene (Supported file formats are .stl, .obj, .fbx, .glb, .gltf, .dae)"""
     bl_idname = "import_model.operator"
     bl_label = "Import Model"
 
@@ -1328,6 +1452,7 @@ class ImportModelOperator(Operator, ImportHelper):
 
 # Operator for adding armatures
 class AddArmatureOperator(Operator):
+    """Add a predefined armature into the scene"""
     bl_idname = "add_armature.operator"
     bl_label = "Add Armature"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1442,7 +1567,6 @@ def register():
     bpy.utils.register_class(ImportModelOperator)
     bpy.utils.register_class(AddArmatureOperator)
     bpy.utils.register_class(OBJECT_OT_JoinVisible)
-    bpy.utils.register_class(OBJECT_OT_JoinAll)
     bpy.utils.register_class(MESH_OT_SeparateBySelection)
     bpy.utils.register_class(MESH_OT_SeparateByLooseParts)
     bpy.utils.register_class(MESH_OT_SeparateByMaterials)
@@ -1515,7 +1639,6 @@ def unregister():
     bpy.utils.unregister_class(ImportModelOperator)
     bpy.utils.unregister_class(AddArmatureOperator)
     bpy.utils.unregister_class(OBJECT_OT_JoinVisible)
-    bpy.utils.unregister_class(OBJECT_OT_JoinAll)
     bpy.utils.unregister_class(MESH_OT_SeparateBySelection)
     bpy.utils.unregister_class(MESH_OT_SeparateByLooseParts)
     bpy.utils.unregister_class(MESH_OT_SeparateByMaterials)
