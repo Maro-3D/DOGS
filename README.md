@@ -1,22 +1,47 @@
 # DOGS
 
-!!! The addon is still WIP; this is the first code pass so it is super badly written and crashes are to be expected !!!
+<div align="center">
+  <h2>🚧 Add-on Work in Progress 🚧</h2>
+  <p><strong>!!! The addon is still in early stages of developent so keep that in mind !!!</strong></p>
+</div>
 
-First thing first: DOGS are not CATS!
+---
+
+### First Thing First: DOGS are not CATS!
 
 This add-on is not intended to replace the CATS Blender add-on, so please don't consider it as such!
 
-![image](https://github.com/user-attachments/assets/b0a06258-c76a-4aaf-9142-1bc1e9da18c5)
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/b0a06258-c76a-4aaf-9142-1bc1e9da18c5" alt="Add-on Image">
+</div>
 
+### Compatibility
 
-Addon is for Bledner 4.2.0 + !
+The add-on is compatible with **Blender 4.2.0+**!
 
-To install, just click the download button below. In Blender, go to **Edit** -> **Preferences** -> **Add-ons** -> **Install** and select the zip file that you downloaded.
+### Installation Instructions
 
-Don't forget to enable the add-on after installing it!
+To install the add-on, follow these steps:
 
-**[-> Download <-](https://github.com/Maro-3D/DOGS/archive/refs/heads/main.zip)**
+1. Click the download button below.
+2. In Blender, go to **Edit** -> **Preferences** -> **Add-ons** -> **Install**.
+3. Select the zip file that you downloaded.
+4. Don't forget to enable the add-on after installing it!
 
-This add-on enhances Blender's functionality with a focus on VR model preparation and optimization, offering features like armature creation, scene and armature statistics, mesh editing, and export options to game engines and texture software.
+<div align="left">
+  <a href="https://github.com/Maro-3D/DOGS/archive/refs/heads/main.zip" style="font-size: 20px; font-weight: bold;">⬇️ Download the Add-on Here! ⬇️</a>
+</div>
+
+### Add-on Features
+
+This add-on enhances Blender's functionality with a focus on VR model preparation and optimization, offering features like:
+
+- Armature creation
+- Scene and armature statistics
+- Mesh editing
+- Export options to game engines and texture software
+
+### Acknowledgements
 
 Big thanks to [Kaide](https://x.com/Kaideart) who provided the armatures!
+
