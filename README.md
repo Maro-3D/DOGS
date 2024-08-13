@@ -23,7 +23,7 @@ This add-on is not intended to replace the [CATS Blender add-on](https://github.
 
 ### Compatibility
 
-The add-on is compatible with **Blender 4.2.0+**!
+The add-on is compatible with **Blender 4.2.0 and up**!
 
 ### Installation Instructions
 
