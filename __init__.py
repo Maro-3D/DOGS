@@ -813,17 +813,12 @@ class WEIGHT_PAINT_EDIT_PT_panel(Panel):
         obj = context.object
         overlay = context.space_data.overlay
         tool_settings = context.scene.tool_settings
-        scene = context.scene
-
-        
+        scene = context.scene     
         armature = get_armature_parent(obj)
-        
-        armature_name = context.scene.selected_armature
-        #armature_obj = bpy.data.objects.get(armature_name)
+
+
 
         row = layout.row()
-
-        
 
         if context.mode == 'PAINT_WEIGHT':
             row.operator('object.toggle_weight_paint', text="Exit Weight Paint Mode", icon='RADIOBUT_ON')
@@ -844,30 +839,34 @@ class WEIGHT_PAINT_EDIT_PT_panel(Panel):
             box_row = box.row(align=True)
 
             if armature:
-                box_row.enabled = True
-            else:
-                box_row.enabled = False
+                box_row.prop(armature.pose, "use_mirror_x", text="Mirror Bone Pose in X Axis", expand=True, icon='OUTLINER_DATA_ARMATURE')
+                box_row.operator('object.reset_pose', text="", icon='LOOP_BACK')
             
-            box_row.prop(armature.pose, "use_mirror_x", text="Mirror Bone Pose in X Axis", expand=True, icon='OUTLINER_DATA_ARMATURE')
-            box_row.operator('object.reset_pose', text="", icon='LOOP_BACK')
-            
-            
-            pivot_icon = 'PIVOT_INDIVIDUAL' if context.scene.tool_settings.transform_pivot_point == 'INDIVIDUAL_ORIGINS' else 'PIVOT_MEDIAN'
-            box_row.operator('object.toggle_pivot_point', text="", icon=pivot_icon)
+                pivot_icon = 'PIVOT_INDIVIDUAL' if context.scene.tool_settings.transform_pivot_point == 'INDIVIDUAL_ORIGINS' else 'PIVOT_MEDIAN'
+                box_row.operator('object.toggle_pivot_point', text="", icon=pivot_icon)
 
-            row = layout.row()
-            row.alignment = 'CENTER'
-            row.label(text="Weight Paint Functions", icon="MOD_VERTEX_WEIGHT")
-            box = layout.box()
-            
-            box.operator("object.vertex_group_clean", text="Clean Vertex Groups", icon="TRASH")
-            
-            box_fill = box.row()
-            
-            box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 0 Weight").weight_value = 0.0
-            box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 1 Weight").weight_value = 1.0
-            
+                row = layout.row()
+                row.alignment = 'CENTER'
+                row.label(text="Weight Paint Functions", icon="MOD_VERTEX_WEIGHT")
                 
+                box = layout.box()
+                box.operator("object.vertex_group_clean", text="Clean Vertex Groups", icon="TRASH")
+                
+                box_fill = box.row()
+                box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 0 Weight").weight_value = 0.0
+                box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 1 Weight").weight_value = 1.0
+            
+                row = layout.row()
+                row.alignment = 'CENTER'
+                row.label(text="Bone Collections", icon="GROUP_BONE")
+                
+                #Get the bone colelction in weightpaint mode
+                with bpy.context.temp_override(armature=armature.data):
+                    layout.template_bone_collection_tree()
+            else:
+                
+                box_row.label(text="No armature selected!", icon="ERROR")
+
         else:
 
             row.operator('object.toggle_weight_paint', text="Enter Weight Paint Mode", icon='RADIOBUT_OFF')
@@ -882,10 +881,15 @@ class ARMATURE_OT_CopyBoneColorToCollection(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        obj = context.object
+        
+        armature_obj = context.object
+        armature_data = armature_obj.data
+        
+        if not bpy.context.active_pose_bone:
+            cls.poll_message_set("No active bone selected.")
+            return False
 
         # Check if the armature has a bone collection
-        armature_data = obj.data
         if not hasattr(armature_data, "collections") or not armature_data.collections:
             cls.poll_message_set("The armature does not have a bone collection.")
             return False
@@ -893,19 +897,52 @@ class ARMATURE_OT_CopyBoneColorToCollection(bpy.types.Operator):
         # All conditions are met
         return True
     
+    
     def execute(self, context):
         
-        obj = context.object
+        armature_obj = context.object
 
-        # Select bones in the active collection
-        bpy.ops.armature.collection_select()
+        try:
+            # Attempt to run the armature.collection_select operator
+            bpy.ops.armature.collection_select()
 
-        # Copy bone color to selected bones
-        bpy.ops.armature.copy_bone_color_to_selected(bone_type='EDIT')
-
+        except RuntimeError as e:
+            
+            # Check if the error message matches the expected error
+            if "No active bone collection" in str(e):
+                self.report({'WARNING'}, "Operation cancelled. No bone collection was selected.")
+                return {'CANCELLED'}
+            
+            else:
+                # Handle other runtime errors
+                self.report({'ERROR'}, f"{e}")
+                return {'CANCELLED'}
+        
+        #Check if it selected any bones beside the active one
+        selected_bones = [bone for bone in armature_obj.pose.bones if bone.bone.select]
+        num_selected = len(selected_bones)
+        
+        if num_selected == 1:
+            self.report({'WARNING'}, "Operation cancelled. No bones in the collection.")
+            return {'CANCELLED'}
+        
+        try:
+            # Copy bone color to selected bones
+            bpy.ops.armature.copy_bone_color_to_selected(bone_type='EDIT')
+        
+        except Exception as error: 
+            # Print the error message if an exception occurs
+            self.report({'WARNING'}, f"{error}")
+            return {'CANCELLED'}
+        
+        
+        
+        
+        
         # Deselect bones in the collection
         bpy.ops.armature.collection_deselect()
-
+        
+        self.report({'INFO'}, "Finished copying color to the active collection!")
         return {'FINISHED'}
 
 
