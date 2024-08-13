@@ -11,9 +11,10 @@
 
 ---
 
-### First Thing First: DOGS are not CATS!
+### First Thing First: 🐶 DOGS  are not CATS 🐱!
 
-This add-on is not intended to replace the CATS Blender add-on, so please don't consider it as such!
+This add-on is not intended to replace the [CATS Blender add-on](https://github.com/absolute-quantum/cats-blender-plugin), so please don't consider it as such!
+
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/b0a06258-c76a-4aaf-9142-1bc1e9da18c5" alt="Add-on Image">
