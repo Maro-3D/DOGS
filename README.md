@@ -1,4 +1,7 @@
-# DOGS
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/f910242b-1e56-4618-83a3-e62d7faa3001" alt="Logo" width="70%">
+</div>
+
 
 <div align="center">
   <h2>🚧 Add-on Work in Progress 🚧</h2>
