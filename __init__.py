@@ -1658,7 +1658,7 @@ def register():
     )
     bpy.types.Scene.selected_armature = EnumProperty(
         name="Selected Armature",
-        description="Armature of the avatar to export",
+        description="Armature of the avatar you want the performance statistics for",
         items=armature_items,
     )
     bpy.types.Scene.device_mode = EnumProperty(
