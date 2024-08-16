@@ -1,151 +1,98 @@
-# DOGS Blender Add-on Manual
+# **DOGS Add-On User Manual**
 
-## Overview
+This manual provides a detailed explanation of each function available in the DOGS add-on interface.
 
-**DOGS** is a suite of tools for managing and editing armatures and meshes in Blender to streamlin ethe proces of VR avatars. It includes predefined armature types, streamlined mesh editing operations, and better rigging setup. The add-on aims to help optimize avatars for both PC and Portable platforms like the Meta Quest, providing scene and armature statistics to help maintain performance-friendly models.
+## **1. Import Model**
+- **Function:** Allows you to import models into the scene.
+- **Usage:** Click this button to open the file dialog and select a model to import. (Supported file formats are .stl, .obj, .fbx, .glb, .gltf, .dae)
 
-- **Author:** Marek Hanzelka
-- **Version:** 0.0.1
-- **Blender Version:** 4.2.0
-- **Location:** `View3D > Sidebar > DOGS`
-- **Category:** Rigging
+## **2. Avatar Armature**
+- **Function:** Dropdown menu to select the armature you want the statistics for.
+- **Usage:** Choose an armature from the list of available armatures in the scene.
 
----
+## **3. Add Armatures**
+This section allows you to add different types of pre-made armatures to your scene.
+- **3.1 Basic Humanoid:** Adds a simple humanoid armature.
+- **3.2 Extended Humanoid:** Adds an extended version of the humanoid armature, which includes additional bones.
+- **3.3 Digitigrade Humanoid:** Adds a digitigrade humanoid armature, suitable for models with animal-like leg structures.
 
-## Installation
-
-1. Download the `DOGS.zip` file.
-2. In Blender, go to `Edit > Preferences > Add-ons > Install`.
-3. Select the `DOGS.zip` file and click `Install Add-on`.
-4. Enable the add-on by checking the checkbox next to `DOGS`.
-
----
-
-## Features
-
-### Armature Management
-
-DOGS provides three predefined armature types:
-
-- **Basic Humanoid**
-- **Extended Humanoid**
-- **Digitigrade Humanoid**
-
-Each type is designed for specific use cases and can be added to your scene with a single click.
-
-### Mesh Editing
-
-The mesh editing panel offers several tools for manipulating mesh data, including:
-
-- **Join Mesh**: Combine selected or visible meshes into one.
-- **Separate Mesh**: Split meshes based on selection, loose parts, or materials.
-- **Explode Selected Objects**: Separates and moves pieces of the mesh for visual effects.
-- **Normals Management**: Recalculate or flip normals, and adjust shading (smooth, flat, auto).
-
-### Scene & Armature Statistics
-
-DOGS provides real-time statistics for both scenes and individual armatures:
-
-- **Triangle Count**
-- **Material Count**
-- **Bone Count**
-- **Skinned Mesh Count**
-
-Statistics are evaluated against thresholds to determine the overall performance rating (`Good`, `Medium`, or `Poor`) for either PC or Portable platforms.
+## **4. Export**
+This section manages the export settings for your model.
+- **4.1 Export Dropdown:** Select the collection to export.
+- **4.2 List of Exporters:** Shows exporters assigned to the active collection.
+- **4.3 Add Export Format:** Allows you to add new exporters.
+- **4.4 Export All:** Exports all added exporters.
+- **4.5 Export Settings:** Shows the exporters' settings.
+- **4.6 Export:** Exports the active exporter.
 
 ---
 
-## Panels and Operators
+## **Stats Panel**
 
-### Main Panel (DOGS)
+### **5. Device Mode**
+Switch between rating your model for PC or Portable platforms. (Rating is based on VRChat limits)
+- **5.1 PC VR:** Shows stats for PC VR devices.
+- **5.2 Portable VR:** Shows stats for portable VR devices.
 
-- **Import Model**: Import a model into the scene.
-- **Avatar Armature**: Select an armature for detailed editing.
-- **Add Armatures**: Dropdown to add predefined armature types.
-- **Export**: Manage collections and export models.
+### **6. Rating for:**
+- **Function:** Displays the name of the avatar currently being rated and switches the rating between rating for the selected Armature or the whole scene.
+- **Usage:** The avatar's name is displayed here for reference during optimization.
 
-### Stats Panel
-
-Displays detailed statistics about the selected armature or all visible objects. Ratings are provided based on platform (PC or Portable).
-
-- **Device Mode**: Toggle between PC and Portable modes.
-- **Rating for**: Displays the selected armature or all visible objects.
-- **Triangls**: Number of triangles.
-- **Materials**: Number of materials.
-- **Bones**: Number of bones.
-- **Skinned Meshs**: Number of skinned meshes.
-
-### Mesh Editing Panel
-
-Provides tools for editing meshes directly from the panel:
-
-- **Join Mesh**: Combines selected or visible meshes.
-- **Separate Mesh**: Separates by selection, loose parts, or materials.
-- **Normals**: Manage normals, including recalculating and flipping.
-- **Shade**: Set shading to smooth, flat, or auto.
-
-### Armature Editing Panel
-
-Tools specifically for armature manipulation:
-
-- **Pose Mode Toggle**: Enter or exit pose mode.
-- **Bone Options**: Show names, axes, or change bone display types.
-- **Bone Color**: Manage bone color settings.
-- **Bone Collections**: Manage and organize bone collections.
-
-### Weight Paint Editing Panel
-
-Facilitates weight painting with advanced options:
-
-- **Weight Paint Mode Toggle**: Enter or exit weight paint mode.
-- **Show Weight Paint Contours**: Toggle contour visibility.
-- **Mirror Bone Pose**: Mirror pose across the X-axis.
-- **Clean Vertex Groups**: Removes unnecessary vertex groups.
-- **Bone Collections**: Manage bone collections while in weight paint mode.
+### **7. Statistics**
+Shows important statistics about the model:
+- **7.1 Triangles:** The number of triangles in the mesh.
+- **7.2 Materials:** The number of materials used by the model.
+- **7.3 Bones:** The number of bones in the armature.
+- **7.4 Skinned Meshes:** The number of skinned meshes.
+- **7.5 Rating:** Overall rating based on the above statistics, helping to assess performance (e.g., Good, Poor).
 
 ---
 
-## Ratings and Thresholds
+## **Mesh Editing Panel**
 
-The add-on assesses the model's performance based on different thresholds for PC and Portable platforms:
+### **8. Join Mesh**
+Options for joining different parts of the mesh.
+- **8.1 Selected:** Joins only the selected meshes.
+- **8.2 Visible:** Joins all visible meshes.
 
-- **PC Good**: Tri count ≤ 35,000, Materials ≤ 2, Bones ≤ 150, Skinned Meshes ≤ 8
-- **PC Medium**: Tri count ≤ 70,000, Materials ≤ 8, Bones ≤ 256, Skinned Meshes ≤ 16
-- **Portable Good**: Tri count ≤ 10,000, Materials ≤ 1, Bones ≤ 90, Skinned Meshes ≤ 1
-- **Portable Medium**: Tri count ≤ 15,000, Materials ≤ 2, Bones ≤ 150, Skinned Meshes ≤ 2
+### **9. Separate By**
+Options to separate parts of the mesh based on different criteria.
+- **9.1 Selection:** Separates the mesh based on selected parts.
+- **9.2 Loose Parts:** Separates by loose parts, splitting the mesh where there are no connecting edges.
+- **9.3 Materials:** Separates the mesh based on the different materials applied.
 
----
+### **10. Explode Selected Objects**
+- **Function:** Spreads selected objects in the scene.
+- **Usage:** Useful for setting up the model for Substance Painter.
 
-## Frequently Asked Questions
+### **11. Normals**
+Options for viewing and adjusting the normals of the mesh.
+- **11.1 Recalculate:** Recalculates the normals to ensure they face the correct direction.
+- **11.2 Flip:** Flips the direction of the normals.
+- **11.3 Show/Hide:** Shows the direction of the normals.
 
-### How do I add a new armature?
-Go to the DOGS panel in the 3D Viewport sidebar, expand the "Add Armatures" section, and click on the desired armature type.
+### **12. Shade**
+Adjust the shading of the selected mesh.
+- **12.1 Smooth:** Applies smooth shading to the whole mesh.
+- **12.2 Auto:** Adds a Smooth By Angle Modifier to automatically set the sharpness of mesh edges based on the angle between the neighboring faces.
+- **12.3 Flat:** Applies flat shading to the whole mesh, showing each face distinctly.
 
-### Can I rate the entire scene?
-Yes, in the Stats panel, enable the "Rate All Visible Objects" option to rate the entire scene instead of just the selected armature.
-
-### How can I use the mesh editing features?
-Ensure the object is in Object or Edit mode. Use the options in the Mesh Editing panel to join, separate, or manipulate mesh normals.
-
----
-
-## Troubleshooting
-
-### The add-on is not showing in the sidebar.
-Ensure that the add-on is correctly installed and enabled in the Blender preferences. If the problem persists, try restarting Blender.
-
-### Statistics are incorrect or not updating.
-Ensure that the armature or mesh is selected and visible. If in Edit mode, make sure to exit and re-enter the mode to refresh the data.
-
----
-
-## License
-
-This add-on is distributed under the MIT License. See the LICENSE file for more details.
+### **13. Remove Custom Split Normals**
+- **Function:** Removes any custom split normals, reverting to default normals.
+- **Usage:** Useful if custom normals were applied and need to be reset.
 
 ---
 
-## Contact
+## **Armature Editing Panel**
 
-For support, feature requests, or bug reports, contact the author at [email@example.com](mailto:email@example.com).
+### **14. Pose Mode Toggle**
+- **Function:** Toggles between Object Mode and Pose Mode.
+- **Usage:** Click to switch into Pose Mode to adjust the armature's pose.
 
+---
+
+## **Weight Paint Editing Panel**
+
+### **15. Enter Weight Paint Mode**
+- **Function:** Switches to Weight Paint mode for painting vertex weights.
+- **Usage:** Click to enter Weight Paint Mode for detailed adjustments of bone influence on the mesh.
