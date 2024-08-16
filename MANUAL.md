@@ -2,7 +2,7 @@
 
 ## Overview
 
-**DOGS** is a comprehensive suite of tools for managing and editing armatures and meshes in Blender. It includes predefined armature types, advanced mesh editing operations, and enhanced rigging controls. The add-on is optimized for both PC and Portable platforms, providing detailed scene and armature statistics to help maintain performance-friendly models.
+**DOGS** is a suite of tools for managing and editing armatures and meshes in Blender to streamlin ethe proces of VR avatars. It includes predefined armature types, streamlined mesh editing operations, and better rigging setup. The add-on aims to help optimize avatars for both PC and Portable platforms like the Meta Quest, providing scene and armature statistics to help maintain performance-friendly models.
 
 - **Author:** Marek Hanzelka
 - **Version:** 0.0.1
