@@ -349,33 +349,20 @@ RATING_THRESHOLDS = {
 }
 
 
-def update_active_collection(self, context):
-    """Update function to set the active collection when the dropdown is changed."""
-    collection_name = self.collection_selector
-    layer_collection = find_layer_collection(context.view_layer.layer_collection, collection_name)
-    if layer_collection:
-        context.view_layer.active_layer_collection = layer_collection
 
-def find_layer_collection(layer_collection, collection_name):
-    """Recursively search for the layer collection with the given collection name."""
-    if layer_collection.collection.name == collection_name:
-        return layer_collection
-    for child in layer_collection.children:
-        found = find_layer_collection(child, collection_name)
-        if found:
-            return found
-    return None
-
+# Function to dynamically generate the items for the dropdown menus
 def get_collection_items(self, context):
-    """Return a list of tuples representing the available collections."""
-    items = [(col.name, col.name, "") for col in bpy.data.collections]
-    return items
 
-def update_dropdown(self, context):
-    """Synchronize the dropdown with the current active collection."""
-    active_collection = context.view_layer.active_layer_collection.collection
-    self.collection_selector = active_collection.name
-    
+    # Retrieve collections with 'exporters' custom property set to True
+    items = [
+        (col.name, col.name, "")
+        for col in bpy.data.collections
+        if col.exporters
+    ]
+    # If no collections are found, append ('None', 'None', '')
+    if not items:
+        items.append(('None', 'None', ''))
+    return items
     
 
 # Function to list armature items
@@ -520,40 +507,45 @@ class DOGS_PT_panel(Panel):
     def draw(self, context):
         layout = self.layout
         scene = context.scene
-
+        #selected_export_collection = bpy.data.collections.get(bpy.context.scene.collection_selector)
+        selected_export_collection = [
+                                        collection for collection in bpy.data.collections
+                                        if collection.get('exporters')
+                                    ]
+        
         row = layout.row(align=True)
         row.scale_y = 2.0
         row.operator('import_model.operator', icon='IMPORT')
 
-        layout.separator()
-
+        # ----------------- Export -----------------
+        
+        layout.separator()                 
         row = layout.row(align=True)
-        row.alignment = 'CENTER'
+        row.alignment = 'RIGHT'
+        row.scale_x = 1.2
+        row.prop(context.scene, "collection_selector", text="Export",icon="GROUP")
+      
+        row.operator("object.export_collections", text="",icon="EXPORT")
+            
+            
+        # ----------------- Avatar Armature -----------------
+        
+        layout.separator()
+        row = layout.row(align=True)
+        row.alignment = 'RIGHT'
         row.scale_x = 1.2
         row.prop(scene, 'selected_armature', text="Avatar Armature", icon="ARMATURE_DATA")
         
         # Add toggle button for additional options
         row.prop(scene, "show_extra_armature_options", text="", icon='DOWNARROW_HLT' if scene.show_extra_armature_options else 'RIGHTARROW')
-
-        
-
+       
         if scene.show_extra_armature_options:
             box = layout.box()
             box.label(text="Add Armatures", icon='OUTLINER_OB_ARMATURE')
             box.operator('add_armature.operator', text="Basic Humanoid", icon='ADD').armature_type = 'Basic'
             box.operator('add_armature.operator', text="Extended Humanoid", icon='ADD').armature_type = 'Extended'
             box.operator('add_armature.operator', text="Digitigrade Humanoid", icon='ADD').armature_type = 'Digitigrade'
-            
-            
-            
-        layout.separator()
-        box = layout.box()
-        box.prop(context.scene, "collection_selector", text="Export",icon="GROUP")
-        layout.template_collection_exporters()
         
-
-
-
 
 # Panel for Mesh Stats of the avatar
 class STATS_PT_panel(Panel):
@@ -618,7 +610,7 @@ class STATS_PT_panel(Panel):
         
 # Panel for Mesh Editing
 class MESH_EDIT_PT_panel(Panel):
-    bl_label = "Mesh Editing"
+    bl_label = "Object & Mesh Editing"
     bl_idname = "MESH_EDIT_PT_panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -631,15 +623,24 @@ class MESH_EDIT_PT_panel(Panel):
         obj = context.object
         
 
-        # ----------------- Mesh -----------------
+        # ----------------- Object -----------------
         row = layout.row(align=True)
         row.alignment = 'CENTER'
-        row.label(text="Mesh", icon="MESH_DATA")
-
+        row.label(text="Object", icon="META_CUBE")
         box = layout.box()
         sub = box.row(align=True)
 
         if obj != None:
+                
+            sub.operator("object.explode_model", text="Explode Selected Objects", icon="FORCE_TURBULENCE")    
+            
+            # ----------------- Mesh -----------------    
+            row = layout.row(align=True)
+            row.alignment = 'CENTER'
+            row.label(text="Mesh", icon="MESH_DATA")
+
+            box = layout.box()
+            sub = box.row(align=True)
             
             layout.enabled = obj and obj.type == 'MESH' and obj.mode == 'OBJECT' or obj.mode == 'EDIT'
             
@@ -658,8 +659,13 @@ class MESH_EDIT_PT_panel(Panel):
             sub = box.row()
             sub.operator("mesh.separate_by_loose_parts", text="Loose Parts", icon="STICKY_UVS_DISABLE")
             sub.operator("mesh.separate_by_materials", text="Materials", icon="MATERIAL")
+            
+            box = layout.box()
             sub = box.row(align=True)
-            sub.operator("object.explode_model", text="Explode Selected Objects", icon="FORCE_TURBULENCE")
+            sub.label(text="Find:", icon="BORDERMOVE")
+            sub.operator("object.show_ngons", text="Ngons")
+            sub.operator("object.show_triangles", text="Triangels")
+            
             
             # ----------------- Normals -----------------
             row = layout.row(align=True)
@@ -685,11 +691,12 @@ class MESH_EDIT_PT_panel(Panel):
 
             sub = box.row(align=True)
             sub.operator("mesh.customdata_custom_splitnormals_clear", text="Remove custom split normals", icon="X")
-
+            
+            
         else:
-            sub.label(text="Selected Mesh: None")
+            sub.label(text="No Object Selected", icon="ERROR")
             row = layout.row(align=True)
-            row.label(text="No Mesh Selected", icon="ERROR")
+            #row.label(text="No Mesh Selected", icon="ERROR")
             
 
 # Panel for Armature Editing
@@ -860,7 +867,7 @@ class WEIGHT_PAINT_EDIT_PT_panel(Panel):
                 row.alignment = 'CENTER'
                 row.label(text="Bone Collections", icon="GROUP_BONE")
                 
-                #Get the bone colelction in weightpaint mode
+                #Get the bone collection in weightpaint mode
                 with bpy.context.temp_override(armature=armature.data):
                     layout.template_bone_collection_tree()
             else:
@@ -1113,6 +1120,167 @@ class OBJECT_OT_explode_model(bpy.types.Operator):
 
         bpy.context.scene.tool_settings.use_transform_pivot_point_align = False
        
+        return {'FINISHED'}
+
+class OBJECT_OT_show_ngons(bpy.types.Operator):
+    """Select faces that have more than 4 edges in the mesh objects"""
+    bl_idname = "object.show_ngons"
+    bl_label = "Ngons"
+    
+    @classmethod
+    def poll(cls, context):
+        # Check if any objects are selected
+        if not context.selected_objects:
+            cls.poll_message_set("No objects selected.")
+            return False
+        
+        # Check if all selected objects are meshes
+        for obj in context.selected_objects:
+            if obj.type != 'MESH':
+                cls.poll_message_set("All selected objects must be meshes.")
+                return False
+        
+        # Check if we are in Edit Mode
+        if context.object.mode != 'EDIT':
+            cls.poll_message_set("To use this function, you need to be in Edit Mode.")
+            return False
+        
+        # All conditions are met
+        return True
+    
+    def execute(self, context):
+        
+        total_selected_faces = 0  # To store the total number of selected Ngons across all objects
+        
+        for obj in context.selected_objects:
+            if obj.type == 'MESH':
+                # Ensure the object is the active one
+                context.view_layer.objects.active = obj
+
+                # Get the mesh data in Edit Mode
+                mesh = bmesh.from_edit_mesh(obj.data)
+
+                # Deselect all faces first
+                bpy.ops.mesh.select_all(action='DESELECT')
+
+                bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')
+
+                # Select faces with more than 4 sides (Ngons)
+                bpy.ops.mesh.select_face_by_sides(number=4, type='GREATER')
+
+                # Count selected faces
+                num_selected_faces = len([f for f in mesh.faces if f.select])
+                total_selected_faces += num_selected_faces
+
+                # Update the mesh in edit mode
+                bmesh.update_edit_mesh(obj.data)
+
+        if total_selected_faces > 0:
+            self.report({'INFO'}, f"Found Ngons: {total_selected_faces}")
+        else:
+            self.report({'INFO'}, "No Ngons found in selected objects!")
+
+        return {'FINISHED'}
+
+class OBJECT_OT_export_collections(bpy.types.Operator):
+    """Export selected collection"""
+    bl_idname = "object.export_collections"
+    bl_label = "Export Selected Collections"
+    bl_description = "Exports the selected collection using its defined exporters if they exist"
+    
+    @classmethod
+    def poll(cls, context):
+        """Determine if the operator can be executed in the current context."""
+        selected_collection = bpy.data.collections.get(context.scene.collection_selector)
+        
+        if selected_collection and hasattr(selected_collection, 'exporters') and selected_collection.exporters:
+            return True
+
+        cls.poll_message_set("Selected collection does not have any exporters set up.")
+        return False
+
+    def execute(self, context):
+        #Selected collection
+        selected_collection = bpy.data.collections.get(bpy.context.scene.collection_selector)
+    
+        # Store the original active collection
+        original_collection = context.view_layer.active_layer_collection
+        
+        # Find the layer collection that matches the collection to be exported
+        for layer_col in context.view_layer.layer_collection.children:
+            if layer_col.collection == selected_collection:
+                # Set the active layer collection to the desired collection
+                context.view_layer.active_layer_collection = layer_col
+                break
+       
+        # Call the Export all function
+        bpy.ops.collection.export_all()
+        
+        # Print to console which collection is being exported
+        self.report({'INFO'}, f"Successfully exported collection: '{layer_col.name}'.")
+        
+        # Restore the original active collection
+        context.view_layer.active_layer_collection = original_collection
+
+        return {'FINISHED'}
+
+class OBJECT_OT_show_triangles(bpy.types.Operator):
+    """Select faces that have exactly 3 edges in the mesh objects"""
+    bl_idname = "object.show_triangles"
+    bl_label = "Select Triangles"
+
+    @classmethod
+    def poll(cls, context):
+        # Check if any objects are selected
+        if not context.selected_objects:
+            cls.poll_message_set("No objects selected.")
+            return False
+        
+        # Check if all selected objects are meshes
+        for obj in context.selected_objects:
+            if obj.type != 'MESH':
+                cls.poll_message_set("All selected objects must be meshes.")
+                return False
+        
+        # Check if we are in Edit Mode
+        if context.object.mode != 'EDIT':
+            cls.poll_message_set("To use this function, you need to be in Edit Mode.")
+            return False
+        
+        # All conditions are met
+        return True
+    
+    def execute(self, context):
+        total_selected_faces = 0  # To store the total number of selected triangles across all objects
+        
+        for obj in context.selected_objects:
+            if obj.type == 'MESH':
+                # Ensure the object is the active one
+                context.view_layer.objects.active = obj
+
+                # Get the mesh data in Edit Mode
+                mesh = bmesh.from_edit_mesh(obj.data)
+
+                # Deselect all faces first
+                bpy.ops.mesh.select_all(action='DESELECT')
+                
+                bpy.ops.mesh.select_mode(use_extend=False, use_expand=False, type='FACE')
+
+                # Select faces with exactly 3 sides (triangles)
+                bpy.ops.mesh.select_face_by_sides(number=3, type='EQUAL')
+
+                # Count selected faces
+                num_selected_faces = len([f for f in mesh.faces if f.select])
+                total_selected_faces += num_selected_faces
+
+                # Update the mesh in edit mode
+                bmesh.update_edit_mesh(obj.data)
+
+        if total_selected_faces > 0:
+            self.report({'INFO'}, f"Found triangles: {total_selected_faces}")
+        else:
+            self.report({'INFO'}, "No triangles found in selected objects!")
+
         return {'FINISHED'}
 
 
@@ -1493,7 +1661,6 @@ class ImportModelOperator(Operator, ImportHelper):
         return {'FINISHED'}
 
 
-# Operator for adding armatures
 class AddArmatureOperator(Operator):
     """Add a predefined armature into the scene"""
     bl_idname = "add_armature.operator"
@@ -1514,7 +1681,7 @@ class AddArmatureOperator(Operator):
         armature.name = armature_data['name']
 
         obj.show_in_front = True
-        obj.data.display_type = 'OCTAHEDRAL'
+        obj.data.display_type =, 'OCTAHEDRAL'
         obj.display_type = 'WIRE'
 
         bpy.ops.object.mode_set(mode='EDIT')
@@ -1528,20 +1695,17 @@ class AddArmatureOperator(Operator):
 
         for bone_data in armature_data['bones']:
             if bone_data['parent']:
-                bones[bone_data['name']].parent = bones[bone_data['parent']]
+                child_bone = bones[bone_data['name']]
+                parent_bone = bones[bone_data['parent']]
+                child_bone.parent = parent_bone
+                # Only set use_connect if child_bone.head is at parent_bone.tail
+                if (child_bone.head - parent_bone.tail).length < 1e-6:
+                    child_bone.use_connect = True
 
         bpy.ops.object.mode_set(mode='OBJECT')
 
         return {'FINISHED'}
 
-
-# Function for export format items
-def export_format_items(self, context):
-    return [
-        ('GLB/GLTF', '.glb/.gltf', ''),
-        ('FBX', '.fbx', ''),
-        ('OBJ', '.obj', ''),
-    ]
 
 def update_brush_settings(context):
     """Update brush settings based on the toggle state."""
@@ -1560,46 +1724,6 @@ def update_brush_settings(context):
             brush.use_frontface_falloff = True
             brush.falloff_shape = 'SPHERE'
 
-# Function to dynamically generate the items for the dropdown menus
-def get_collection_items(self, context):
-    # Retrieve all collections in the scene
-    items = [(col.name, col.name, "") for col in bpy.data.collections]
-    return items
-
-def set_active_collection(collection_name):
-    # Get the collection by name
-    collection = bpy.data.collections.get(collection_name)
-    
-    if not collection:
-        print(f"Collection '{collection_name}' not found.")
-        return
-
-    # Get the current view layer
-    view_layer = bpy.context.view_layer
-    
-    # A function to recursively find and return the layer collection
-    def find_layer_collection(layer_collection, target_collection):
-        if layer_collection.collection == target_collection:
-            return layer_collection
-        for child in layer_collection.children:
-            found = find_layer_collection(child, target_collection)
-            if found:
-                return found
-        return None
-
-    # Find the layer collection corresponding to the collection
-    layer_collection = find_layer_collection(view_layer.layer_collection, collection)
-
-    if layer_collection:
-        # Set the collection as active
-        view_layer.active_layer_collection = layer_collection
-        print(f"Collection '{collection_name}' is now active.")
-    else:
-        print(f"Collection '{collection_name}' is not in the current view layer.")
-
-def update_dropdown_handler(scene, depsgraph):
-    """Handler to update the dropdown whenever the dependency graph updates."""
-    update_dropdown(bpy.context.scene, bpy.context)
 
 # Register classes and properties
 def register():
@@ -1622,14 +1746,14 @@ def register():
     bpy.utils.register_class(AssignVerticesToActiveGroup)
     bpy.utils.register_class(ARMATURE_OT_CopyBoneColorToCollection)
     bpy.utils.register_class(OBJECT_OT_explode_model)
-    
-    bpy.app.handlers.depsgraph_update_post.append(update_dropdown_handler)
+    bpy.utils.register_class(OBJECT_OT_show_ngons)
+    bpy.utils.register_class(OBJECT_OT_show_triangles)
+    bpy.utils.register_class(OBJECT_OT_export_collections)
     
     bpy.types.Scene.collection_selector = bpy.props.EnumProperty(
         name="Collection Selector",
         description="Select the active collection",
         items=get_collection_items,
-        update=update_active_collection
     )
     
     bpy.types.Scene.paint_through_mesh = bpy.props.BoolProperty(
@@ -1650,12 +1774,8 @@ def register():
         description="Toggle to show or hide extra armature creation options",
         default=False
     )
-    
-    bpy.types.Scene.substance_directory = StringProperty(
-        name="Substance",
-        description="Select Substance directory",
-        subtype='DIR_PATH',
-    )
+
+        
     bpy.types.Scene.selected_armature = EnumProperty(
         name="Selected Armature",
         description="Armature of the avatar you want the performance statistics for",
@@ -1694,15 +1814,14 @@ def unregister():
     bpy.utils.unregister_class(AssignVerticesToActiveGroup)
     bpy.utils.unregister_class(ARMATURE_OT_CopyBoneColorToCollection)
     bpy.utils.unregister_class(OBJECT_OT_explode_model)
-    
-
-    bpy.app.handlers.depsgraph_update_post.remove(update_dropdown_handler)
+    bpy.utils.unregister_class(OBJECT_OT_show_ngons)
+    bpy.utils.unregister_class(OBJECT_OT_show_triangles)
+    bpy.utils.unregister_class(OBJECT_OT_export_collections)
 
     del bpy.types.Scene.collection_selector
     del bpy.types.Scene.paint_through_mesh
     del bpy.types.Scene.rate_all_visible_obj
     del bpy.types.Scene.show_extra_armature_options
-    del bpy.types.Scene.substance_directory
     del bpy.types.Scene.selected_armature
     del bpy.types.Scene.device_mode
 
