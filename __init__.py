@@ -4,6 +4,7 @@ import os
 from bpy.types import Panel, Operator
 from bpy.props import StringProperty, EnumProperty, BoolProperty
 from bpy_extras.io_utils import ImportHelper
+from mathutils import Vector
 
 bl_info = {
     "name": "DOGS",
@@ -376,86 +377,101 @@ def armature_items(self, context):
 
 # Function to get scene statistics
 def get_scene_stats():
-    
-    # Ensure the armature is updated from edit mode if it is in edit mode
-
     triangle_count = 0
-    material_count = 0
     bone_count = 0
     skinned_meshes = 0
-    
-    # Get the current dependency graph to evaluate objects
+    unique_materials = set()
+
+    # Ensure all armatures are updated from edit mode
+    for obj in bpy.data.objects:
+        if obj.type == 'ARMATURE' and obj.mode == 'EDIT':
+            obj.update_from_editmode()
+
     depsgraph = bpy.context.evaluated_depsgraph_get()
 
-    # Iterate over all visible objects in the scene
     for obj in bpy.context.visible_objects:
-        # Calculate triangle count and material count for meshes
         if obj.type == 'MESH':
-            # Get the evaluated object (applies modifiers, etc.)
             evaluated_obj = obj.evaluated_get(depsgraph)
             evaluated_mesh = evaluated_obj.to_mesh()
+            if evaluated_mesh is None:
+                continue  # Skip if mesh conversion failed
 
-            # Create a bmesh to count triangles
-            bm = bmesh.new()
-            bm.from_mesh(evaluated_mesh)
-            bmesh.ops.triangulate(bm, faces=bm.faces)
-            triangle_count += len(bm.faces)
-            
-            # Count materials
-            material_count += len(obj.data.materials)
+            # Use loop triangles for faster triangle count
+            evaluated_mesh.calc_loop_triangles()
+            triangle_count += len(evaluated_mesh.loop_triangles)
 
-            bm.free()
-            evaluated_obj.to_mesh_clear()
+            # Collect unique materials
+            unique_materials.update(mat for mat in obj.data.materials if mat)
 
-            # Check if the mesh is parented to an armature
+            # Check for skinned meshes
             if obj.parent and obj.parent.type == 'ARMATURE':
                 skinned_meshes += 1
 
-        # Calculate cumulative bone count for armatures
+            # Clean up
+            evaluated_obj.to_mesh_clear()
+
         elif obj.type == 'ARMATURE':
             bone_count += len(obj.data.bones)
 
     return {
         "tri_count": triangle_count,
-        "material_count": material_count,
+        "material_count": len(unique_materials),
         "bone_count": bone_count,
         "skinned_meshes": skinned_meshes
     }
+
 
 # Function to get armature statistics
 def get_armature_stats(armature_name):
     armature = bpy.data.objects.get(armature_name)
     if not armature or armature.type != 'ARMATURE':
-        return {"tri_count": 0, "material_count": 0, "bone_count": 0, "skinned_meshes": 0}
+        return {
+            "tri_count": 0,
+            "material_count": 0,
+            "bone_count": 0,
+            "skinned_meshes": 0
+        }
 
     # Ensure the armature is updated from edit mode if it is in edit mode
     if armature.mode == 'EDIT':
-        bpy.context.active_object.update_from_editmode()
+        armature.update_from_editmode()
 
     tri_count = 0
-    material_count = 0
     bone_count = len(armature.data.bones)
     skinned_meshes = 0
+    unique_materials = set()
 
     depsgraph = bpy.context.evaluated_depsgraph_get()
 
     for mesh in armature.children:
-        if mesh.type == 'MESH' and mesh.users_scene:
+        if mesh.type == 'MESH':
             evaluated_obj = mesh.evaluated_get(depsgraph)
             evaluated_mesh = evaluated_obj.to_mesh()
+            if evaluated_mesh is None:
+                continue  # Skip if mesh conversion failed
 
-            bm = bmesh.new()
-            bm.from_mesh(evaluated_mesh)
-            bmesh.ops.triangulate(bm, faces=bm.faces)
+            # Use loop triangles for faster triangle counting
+            evaluated_mesh.calc_loop_triangles()
+            tri_count += len(evaluated_mesh.loop_triangles)
 
-            tri_count += len(bm.faces)
-            material_count += len(mesh.data.materials)
-            skinned_meshes += 1
+            # Collect unique materials
+            unique_materials.update(mat for mat in mesh.data.materials if mat is not None)
 
-            bm.free()
+            # Check if the mesh is skinned (has vertex groups)
+            if mesh.vertex_groups:
+                skinned_meshes += 1
+
+            # Clean up
             evaluated_obj.to_mesh_clear()
 
-    return {"tri_count": tri_count, "material_count": material_count, "bone_count": bone_count, "skinned_meshes": skinned_meshes}
+    material_count = len(unique_materials)
+
+    return {
+        "tri_count": tri_count,
+        "material_count": material_count,
+        "bone_count": bone_count,
+        "skinned_meshes": skinned_meshes
+    }
 
 
 # Function to get rating based on stats
@@ -879,77 +895,102 @@ class WEIGHT_PAINT_EDIT_PT_panel(Panel):
             row.operator('object.toggle_weight_paint', text="Enter Weight Paint Mode", icon='RADIOBUT_OFF')
 
 
-# Operator to color bones in selected bone collection
+# Operator to color bones in selected bone's collection
 class ARMATURE_OT_CopyBoneColorToCollection(bpy.types.Operator):
-    """Copy the active bone's color to all bones in the selected bone collection"""
+    """Copy the active bone's color to all bones in the active bone's collection(s)"""
     bl_idname = "armature.copy_bone_color_to_collection"
     bl_label = "Copy Bone Color to Collection"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
     def poll(cls, context):
-        
         armature_obj = context.object
-        armature_data = armature_obj.data
-        
-        if not bpy.context.active_pose_bone:
+        if not armature_obj or armature_obj.type != 'ARMATURE':
+            cls.poll_message_set("No armature selected.")
+            return False
+
+        if armature_obj.mode != 'POSE':
+            cls.poll_message_set("Armature is not in Pose Mode.")
+            return False
+
+        if not context.active_pose_bone:
             cls.poll_message_set("No active bone selected.")
             return False
 
-        # Check if the armature has a bone collection
+        armature_data = armature_obj.data
         if not hasattr(armature_data, "collections") or not armature_data.collections:
-            cls.poll_message_set("The armature does not have a bone collection.")
+            cls.poll_message_set("The armature does not have any bone collections.")
             return False
 
-        # All conditions are met
         return True
-    
-    
+
+    def get_bone_collections(self, bone):
+        """
+        Returns a list of bone collections that the given bone belongs to.
+        """
+        armature = bone.id_data  # Gets the Armature data block the bone belongs to
+        bone_collections = []
+        for collection in armature.collections:
+            if bone.name in [b.name for b in collection.bones]:
+                bone_collections.append(collection)
+        return bone_collections
+
     def execute(self, context):
-        
         armature_obj = context.object
+        armature_data = armature_obj.data
 
-        try:
-            # Attempt to run the armature.collection_select operator
-            bpy.ops.armature.collection_select()
+        # Ensure we're in Pose Mode
+        if armature_obj.mode != 'POSE':
+            bpy.ops.object.mode_set(mode='POSE')
 
-        except RuntimeError as e:
-            
-            # Check if the error message matches the expected error
-            if "No active bone collection" in str(e):
-                self.report({'WARNING'}, "Operation cancelled. No bone collection was selected.")
-                return {'CANCELLED'}
-            
+        # Get the active pose bone
+        active_pose_bone = context.active_pose_bone
+
+        if not active_pose_bone:
+            self.report({'WARNING'}, "No active bone selected.")
+            return {'CANCELLED'}
+
+        # Get the bone collections the active bone is in
+        bone_collections = self.get_bone_collections(active_pose_bone.bone)
+
+        if not bone_collections:
+            self.report({'WARNING'}, "Active bone is not in any collection.")
+            return {'CANCELLED'}
+
+        # Get all bones in these collections
+        bones_in_collections = set()
+        for collection in bone_collections:
+            for bone in collection.bones:
+                bones_in_collections.add(bone.name)
+
+        # If there are no other bones in the collection(s), cancel
+        if len(bones_in_collections) <= 1:
+            self.report({'WARNING'}, "No other bones in the collection(s).")
+            return {'CANCELLED'}
+
+        # Select all bones in these collections
+        for pose_bone in armature_obj.pose.bones:
+            if pose_bone.name in bones_in_collections:
+                pose_bone.bone.select = True
             else:
-                # Handle other runtime errors
-                self.report({'ERROR'}, f"{e}")
-                return {'CANCELLED'}
-        
-        #Check if it selected any bones beside the active one
-        selected_bones = [bone for bone in armature_obj.pose.bones if bone.bone.select]
-        num_selected = len(selected_bones)
-        
-        if num_selected == 1:
-            self.report({'WARNING'}, "Operation cancelled. No bones in the collection.")
-            return {'CANCELLED'}
-        
+                pose_bone.bone.select = False
+
+        # Copy bone color to selected bones using the operator
         try:
-            # Copy bone color to selected bones
-            bpy.ops.armature.copy_bone_color_to_selected(bone_type='EDIT')
-        
-        except Exception as error: 
-            # Print the error message if an exception occurs
-            self.report({'WARNING'}, f"{error}")
+            # Make sure only the active bone is selected (the operator copies from active to selected)
+            bpy.ops.armature.copy_bone_color_to_selected()
+        except RuntimeError as e:
+            self.report({'ERROR'}, str(e))
             return {'CANCELLED'}
-        
-        
-        
-        
-        
-        # Deselect bones in the collection
-        bpy.ops.armature.collection_deselect()
-        
-        self.report({'INFO'}, "Finished copying color to the active collection!")
+
+        # Deselect all bones
+        for pose_bone in armature_obj.pose.bones:
+            pose_bone.bone.select = False
+
+        # Optionally, reselect the active bone
+        active_pose_bone.bone.select = True
+
+        self.report({'INFO'}, "Finished copying color to bones in the active bone's collection(s).")
         return {'FINISHED'}
 
 
@@ -1069,57 +1110,116 @@ class OBJECT_OT_ToggleWeightPaint(Operator):
         return {'FINISHED'}
 
 class OBJECT_OT_explode_model(bpy.types.Operator):
-    """Move the selected objects from each other in the "Explosion" style"""
+    """Move the selected objects away from a central point in an explosion style"""
     bl_idname = "object.explode_model"
-    bl_label = "Explode Model"
+    bl_label = "Explode Selected Objects"
     bl_options = {'REGISTER', 'UNDO'}
 
     distance: bpy.props.FloatProperty(
-        name="Explode Distance",
-        description="Distance to move parts outwards",
-        default=1.7,
-        min=-5.0,
-        max=5.0,
+        name="Base Explode Distance",
+        description="Base distance to move parts outwards",
+        default=1.0,
+        min=0.0,
+        max=1000.0,
     )
-    
+
+    origin_point: bpy.props.EnumProperty(
+        name="Explosion Origin",
+        description="Point from which objects will move away",
+        items=[
+            ('SCENE_ORIGIN', "Scene Origin", "Use the scene's origin (0,0,0) as the explosion center"),
+            ('SELECTION_CENTER', "Selection Center", "Use the center of the selected objects as the explosion center"),
+            ('CURSOR', "3D Cursor", "Use the 3D cursor location as the explosion center"),
+        ],
+        default='SELECTION_CENTER',
+    )
+
+    size_based_explosion: bpy.props.BoolProperty(
+        name="Size Based Explosion",
+        description="When enabled, smaller objects move faster than bigger ones",
+        default=False,
+    )
+
     @classmethod
     def poll(cls, context):
-    # Check if the current mode is Object mode
+        # Check if the current mode is Object mode
         if context.mode != 'OBJECT':
             cls.poll_message_set("The current mode is not Object mode.")
             return False
 
-        # Check if at least two objects are selected
+        # Check if at least one object is selected
         selected_objects = context.selected_objects
-        if len(selected_objects) < 2:
-            cls.poll_message_set("At least two objects must be selected.")
+        if len(selected_objects) == 0:
+            cls.poll_message_set("No objects selected.")
             return False
 
         # All conditions are met
         return True
-    
+
     def execute(self, context):
-        obj = context.active_object
-        
-        use_transform_pivot_point_align = bpy.context.scene.tool_settings.use_transform_pivot_point_align
-        transform_pivot_point = bpy.context.scene.tool_settings.transform_pivot_point
+        selected_objects = context.selected_objects
 
-        
-        
-        if not obj or obj.type != 'MESH':
-            self.report({'WARNING'}, "Select a mesh object")
-            return {'CANCELLED'}
+        # Set origin of selected objects to their bounding box centers
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in selected_objects:
+            obj.select_set(True)
+            context.view_layer.objects.active = obj
+            bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
+            obj.select_set(False)
 
-        bpy.context.scene.tool_settings.transform_pivot_point = 'BOUNDING_BOX_CENTER'
-        
-        bpy.ops.object.origin_set(type='ORIGIN_GEOMETRY', center='BOUNDS')
-        
-        bpy.context.scene.tool_settings.use_transform_pivot_point_align = True
-                    
-        bpy.ops.transform.resize(value=(self.distance, self.distance, self.distance), orient_type='GLOBAL')
+        # Re-select all selected objects
+        for obj in selected_objects:
+            obj.select_set(True)
+        context.view_layer.objects.active = selected_objects[0]
 
-        bpy.context.scene.tool_settings.use_transform_pivot_point_align = False
-       
+        # Determine the explosion origin point
+        if self.origin_point == 'SCENE_ORIGIN':
+            explosion_origin = Vector((0.0, 0.0, 0.0))
+        elif self.origin_point == 'CURSOR':
+            explosion_origin = context.scene.cursor.location.copy()
+        else:
+            # Compute the center of selected objects
+            total_pos = Vector((0.0, 0.0, 0.0))
+            for obj in selected_objects:
+                total_pos += obj.location
+            explosion_origin = total_pos / len(selected_objects)
+
+        # Prepare for size-based explosion if enabled
+        if self.size_based_explosion:
+            # Compute sizes of objects (use bounding box diagonal length)
+            sizes = {}
+            for obj in selected_objects:
+                # Get the world-space bounding box corners
+                bbox_corners = [obj.matrix_world @ Vector(corner) for corner in obj.bound_box]
+                # Calculate the maximum distance between any two corners (diagonal length)
+                bbox_size = max((bbox_corners[i] - bbox_corners[j]).length for i in range(8) for j in range(8))
+                sizes[obj] = bbox_size
+
+            max_size = max(sizes.values())
+            min_size = min(sizes.values())
+            size_range = max_size - min_size if max_size != min_size else 1.0
+
+            # Normalize sizes to a range of 0 to 1, invert so smaller objects have higher values
+            normalized_sizes = {obj: (max_size - size) / size_range for obj, size in sizes.items()}
+
+        # Move each object away from the explosion origin
+        for obj in selected_objects:
+            direction = (obj.location - explosion_origin)
+            if direction.length == 0:
+                # If the object is exactly at the origin, move it along Z-axis
+                direction = Vector((0.0, 0.0, 1.0))
+            else:
+                direction.normalize()
+
+            if self.size_based_explosion:
+                # Scale distance based on size
+                size_factor = normalized_sizes[obj]
+                move_distance = self.distance * size_factor
+            else:
+                move_distance = self.distance
+
+            obj.location += direction * move_distance
+
         return {'FINISHED'}
 
 class OBJECT_OT_show_ngons(bpy.types.Operator):
@@ -1637,7 +1737,7 @@ class MESH_OT_SeparateByMaterials(Operator):
 
 # Operator for importing models
 class ImportModelOperator(Operator, ImportHelper):
-    """Import 3D model in to the scene (Supported file formats are .stl, .obj, .fbx, .glb, .gltf, .dae)"""
+    """Import 3D model into the scene (Supported file formats: .stl, .obj, .fbx, .glb, .gltf, .dae)"""
     bl_idname = "import_model.operator"
     bl_label = "Import Model"
 
@@ -1647,18 +1747,31 @@ class ImportModelOperator(Operator, ImportHelper):
     )
 
     def execute(self, context):
-        filepath = self.filepath.lower()
+        filepath = self.filepath
+        ext = os.path.splitext(filepath)[1].lower()
         import_ops = {
-            '.stl': bpy.ops.import_mesh.stl,
+            '.stl': bpy.ops.wm.stl_import,
             '.obj': bpy.ops.wm.obj_import,
-            '.fbx': bpy.ops.import_scene.fbx,
-            '.glb': bpy.ops.import_scene.gltf,
-            '.gltf': bpy.ops.import_scene.gltf,
-            '.dae': bpy.ops.wm.collada_import,
+            '.fbx': bpy.ops.wm.fbx_import,
+            '.glb': bpy.ops.wm.gltf_import,
+            '.gltf': bpy.ops.wm.gltf_import,
+            '.dae': bpy.ops.wm.dae_import,
         }
-        ext = filepath.split('.')[-1]
-        import_ops[f'.{ext}'](filepath=self.filepath)
-        return {'FINISHED'}
+        operator = import_ops.get(ext)
+        if operator:
+            if operator.poll():
+                try:
+                    operator(filepath=filepath)
+                except Exception as e:
+                    self.report({'ERROR'}, f"Failed to import '{ext}' file: {e}")
+                    return {'CANCELLED'}
+                return {'FINISHED'}
+            else:
+                self.report({'ERROR'}, f"Import operator for '{ext}' files is not available.")
+                return {'CANCELLED'}
+        else:
+            self.report({'ERROR'}, f"Unsupported file extension: {ext}")
+            return {'CANCELLED'}
 
 
 class AddArmatureOperator(Operator):
