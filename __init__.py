@@ -1681,7 +1681,7 @@ class AddArmatureOperator(Operator):
         armature.name = armature_data['name']
 
         obj.show_in_front = True
-        obj.data.display_type =, 'OCTAHEDRAL'
+        obj.data.display_type = 'OCTAHEDRAL'
         obj.display_type = 'WIRE'
 
         bpy.ops.object.mode_set(mode='EDIT')
