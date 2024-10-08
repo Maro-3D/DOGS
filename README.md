@@ -30,13 +30,16 @@ The add-on is compatible with **Blender 4.2.0 and up**!
 To install the add-on, follow these steps:
 
 1. Click the download button below.
+   
+<div align="left">
+  <a href="https://github.com/Maro-3D/DOGS/archive/refs/heads/main.zip" style="font-size: 20px; font-weight: bold;">⬇️ Download the Add-on Here! ⬇️</a>
+</div>
+
 2. In Blender, go to **Edit** -> **Preferences** -> **Add-ons** -> **Install**.
 3. Select the zip file that you downloaded.
 4. Don't forget to enable the add-on after installing it!
 
-<div align="left">
-  <a href="https://github.com/Maro-3D/DOGS/archive/refs/heads/main.zip" style="font-size: 20px; font-weight: bold;">⬇️ Download the Add-on Here! ⬇️</a>
-</div>
+
 
 ### Add-on Features
 
