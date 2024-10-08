@@ -854,38 +854,54 @@ class WEIGHT_PAINT_EDIT_PT_panel(Panel):
            
             #Made as default
             #box.prop(tool_settings, "use_auto_normalize", text="Auto Normalize Weights")
-           
-            box.prop(tool_settings.weight_paint, "use_group_restrict", text="Paint Only in Selected Vertex Group")
-           
-            box.prop(scene, "paint_through_mesh", text="Paint Through Mesh")
             
-            box_row = box.row(align=True)
+            box.prop(scene, "paint_through_mesh", text="Paint Through Mesh")
+            box.prop(tool_settings.weight_paint, "use_group_restrict", text="Paint Only on Vertecies in the Group")
 
             if armature:
-                box_row.prop(armature.pose, "use_mirror_x", text="Mirror Bone Pose in X Axis", expand=True, icon='OUTLINER_DATA_ARMATURE')
-                box_row.operator('object.reset_pose', text="", icon='LOOP_BACK')
-            
-                pivot_icon = 'PIVOT_INDIVIDUAL' if context.scene.tool_settings.transform_pivot_point == 'INDIVIDUAL_ORIGINS' else 'PIVOT_MEDIAN'
-                box_row.operator('object.toggle_pivot_point', text="", icon=pivot_icon)
 
                 row = layout.row()
                 row.alignment = 'CENTER'
                 row.label(text="Weight Paint Functions", icon="MOD_VERTEX_WEIGHT")
                 
                 box = layout.box()
-                box.operator("object.vertex_group_clean", text="Clean Vertex Groups", icon="TRASH")
+                box_horizontal = box.row()
+                box_horizontal.operator("object.vertex_group_clean", text="Clean Vertex", icon="TRASH")
+                box_horizontal.operator("object.weight_gradient_operator", text="Spherical Gradient", icon="SURFACE_NCURVE")
+                
+                box_horizontal = box.row()
+                box_horizontal.operator("object.toggle_weight_value", text="Swap Weight", icon = "UV_SYNC_SELECT")
+                box_horizontal.operator("object.toggle_weight_value", text="Place Holder", icon = "INFO")
                 
                 box_fill = box.row()
-                box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 0 Weight").weight_value = 0.0
-                box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="Fill with 1 Weight").weight_value = 1.0
-            
+                box_fill.label(text="Fill with:", icon="IMAGE")
+                box_fill.scale_x = 0.6
+                box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="0").weight_value = 0.0
+                box_fill.operator(AssignVerticesToActiveGroup.bl_idname, text="1").weight_value = 1.0
+         
+         
+                #Bone Settings
                 row = layout.row()
                 row.alignment = 'CENTER'
-                row.label(text="Bone Collections", icon="GROUP_BONE")
+                row.label(text="Bone Settings", icon="GROUP_BONE")
                 
+                row = layout.box()
+                box_row = row.row(align=True)
+                
+                box_row.prop(armature.pose, "use_mirror_x", text="Mirror Bone Pose in X Axis", expand=True, icon='OUTLINER_DATA_ARMATURE')
+                box_row.operator('object.reset_pose', text="", icon='LOOP_BACK')
+            
+                pivot_icon = 'PIVOT_INDIVIDUAL' if context.scene.tool_settings.transform_pivot_point == 'INDIVIDUAL_ORIGINS' else 'PIVOT_MEDIAN'
+                box_row.operator('object.toggle_pivot_point', text="", icon=pivot_icon)
+                
+                
+                row = layout.box()
+                box_row = row.row(align=True)
+                box_row.label(text="Bone Collections", icon="GROUP")
+                box_row = row.row(align=True)
                 #Get the bone collection in weightpaint mode
                 with bpy.context.temp_override(armature=armature.data):
-                    layout.template_bone_collection_tree()
+                    box_row.template_bone_collection_tree()
             else:
                 
                 box_row.label(text="No armature selected!", icon="ERROR")
@@ -894,6 +910,158 @@ class WEIGHT_PAINT_EDIT_PT_panel(Panel):
 
             row.operator('object.toggle_weight_paint', text="Enter Weight Paint Mode", icon='RADIOBUT_OFF')
 
+class WeightGradientOperator(bpy.types.Operator):
+    """Apply a spherical weight gradient centered at the selected bone"""
+    bl_idname = "object.weight_gradient_operator"
+    bl_label = "Apply Spherical Weight Gradient"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    gradient_strength: bpy.props.FloatProperty(
+        name="Gradient Strength",
+        description="Maximum weight at the center of the bone",
+        default=1.0,
+        min=0.01,
+        
+    )
+
+    gradient_radius: bpy.props.FloatProperty(
+        name="Gradient Radius",
+        description="Radius of the gradient sphere",
+        default=1.0,
+        min=0.0
+    )
+
+    gradient_type: bpy.props.EnumProperty(
+        name="Gradient Type",
+        description="Type of gradient",
+        items=[
+            ('LINEAR', "Linear", ""),
+            ('SMOOTH', "Smooth", ""),
+            ('CONSTANT', "Constant", "")
+        ],
+        default='LINEAR'
+    )
+
+    center_pos_obj: bpy.props.FloatVectorProperty(name="Bone Center", subtype='TRANSLATION')
+
+    def invoke(self, context, event):
+        obj = context.active_object
+
+        if context.mode != 'PAINT_WEIGHT':
+            self.report({'ERROR'}, "You must be in Weight Paint mode to use this operator.")
+            return {'CANCELLED'}
+
+        # Get the active vertex group (assumed to correspond to the selected bone)
+        vertex_group = obj.vertex_groups.active
+        if vertex_group is None:
+            self.report({'ERROR'}, "No active vertex group.")
+            return {'CANCELLED'}
+
+        bone_name = vertex_group.name
+
+        # Get the armature modifier and armature object
+        armature_mod = next((mod for mod in obj.modifiers if mod.type == 'ARMATURE'), None)
+        if armature_mod is None or armature_mod.object is None:
+            self.report({'ERROR'}, "Object has no valid Armature modifier.")
+            return {'CANCELLED'}
+
+        armature = armature_mod.object
+
+        # Get the pose bone from the armature
+        pose_bone = armature.pose.bones.get(bone_name)
+        if pose_bone is None:
+            self.report({'ERROR'}, f"Pose Bone '{bone_name}' not found in armature.")
+            return {'CANCELLED'}
+
+        # Calculate the bone center
+        head_pos_world = armature.matrix_world @ pose_bone.head
+        tail_pos_world = armature.matrix_world @ pose_bone.tail
+        center_pos_world = (head_pos_world + tail_pos_world) / 2
+
+        # Store the bone center in object space
+        self.center_pos_obj = obj.matrix_world.inverted() @ center_pos_world
+
+        # Place the 3D cursor at the bone center (for debugging)
+        bpy.context.scene.cursor.location = center_pos_world
+
+        # Call the execute method
+        return self.execute(context)
+
+    def execute(self, context):
+        obj = context.active_object
+
+        if context.mode != 'PAINT_WEIGHT':
+            self.report({'ERROR'}, "You must be in Weight Paint mode to use this operator.")
+            return {'CANCELLED'}
+
+        center_pos_obj = self.center_pos_obj
+
+        mesh = obj.data
+
+        # Apply the gradient to each vertex in the mesh
+        for v in mesh.vertices:
+            v_co = v.co
+            distance = (v_co - center_pos_obj).length
+
+            if distance > self.gradient_radius:
+                weight = 0.0
+            else:
+                normalized_distance = distance / self.gradient_radius if self.gradient_radius > 0 else 0.0
+
+                if self.gradient_type == 'LINEAR':
+                    weight = self.gradient_strength * (1 - normalized_distance)
+                elif self.gradient_type == 'SMOOTH':
+                    weight = self.gradient_strength * ((math.cos(math.pi * normalized_distance) + 1) / 2)
+                elif self.gradient_type == 'CONSTANT':
+                    weight = self.gradient_strength
+                else:
+                    weight = 0.0
+
+            weight = max(0.0, min(weight, 1.0))  # Clamp the weight between 0 and 1
+
+            vertex_group = obj.vertex_groups.active
+
+            if weight > 0.0:
+                vertex_group.add([v.index], weight, 'REPLACE')
+            else:
+                vertex_group.remove([v.index])
+
+        return {'FINISHED'}
+
+class ToggleWeightValue(bpy.types.Operator):
+    """Toggle the weight paint value between 0 and 1"""
+    bl_idname = "object.toggle_weight_value"
+    bl_label = "Toggle Weight Value"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        obj = context.object
+
+        # Check if there is an active object
+        if obj is None:
+            cls.poll_message_set("No active object selected.")
+            return False
+
+        # Check if the active object has an active vertex group
+        if obj.vertex_groups.active is None:
+            cls.poll_message_set("The active object does not have an active vertex group.")
+            return False
+
+        # All conditions are met
+        return True
+
+    def execute(self, context):
+        # Get the current weight value
+        current_weight = bpy.context.scene.tool_settings.unified_paint_settings.weight
+        
+        # Toggle the weight value to 1 if it is 0, otherwise set it to 0
+        if current_weight == 0:
+            bpy.context.scene.tool_settings.unified_paint_settings.weight = 1.0
+        else:
+            bpy.context.scene.tool_settings.unified_paint_settings.weight = 0.0
+
+        return {'FINISHED'}
 
 # Operator to color bones in selected bone's collection
 class ARMATURE_OT_CopyBoneColorToCollection(bpy.types.Operator):
@@ -905,13 +1073,6 @@ class ARMATURE_OT_CopyBoneColorToCollection(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         armature_obj = context.object
-        if not armature_obj or armature_obj.type != 'ARMATURE':
-            cls.poll_message_set("No armature selected.")
-            return False
-
-        if armature_obj.mode != 'POSE':
-            cls.poll_message_set("Armature is not in Pose Mode.")
-            return False
 
         if not context.active_pose_bone:
             cls.poll_message_set("No active bone selected.")
@@ -992,6 +1153,7 @@ class ARMATURE_OT_CopyBoneColorToCollection(bpy.types.Operator):
 
         self.report({'INFO'}, "Finished copying color to bones in the active bone's collection(s).")
         return {'FINISHED'}
+
 
 
 class AssignVerticesToActiveGroup(bpy.types.Operator):
@@ -1862,6 +2024,8 @@ def register():
     bpy.utils.register_class(OBJECT_OT_show_ngons)
     bpy.utils.register_class(OBJECT_OT_show_triangles)
     bpy.utils.register_class(OBJECT_OT_export_collections)
+    bpy.utils.register_class(ToggleWeightValue)
+    bpy.utils.register_class(WeightGradientOperator)
     
     bpy.types.Scene.collection_selector = bpy.props.EnumProperty(
         name="Collection Selector",
@@ -1930,6 +2094,8 @@ def unregister():
     bpy.utils.unregister_class(OBJECT_OT_show_ngons)
     bpy.utils.unregister_class(OBJECT_OT_show_triangles)
     bpy.utils.unregister_class(OBJECT_OT_export_collections)
+    bpy.utils.unregister_class(ToggleWeightValue)
+    bpy.utils.unregister_class(WeightGradientOperator)
 
     del bpy.types.Scene.collection_selector
     del bpy.types.Scene.paint_through_mesh
