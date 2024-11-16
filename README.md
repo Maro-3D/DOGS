@@ -6,7 +6,7 @@
 
 
 <div align="center">
-  <h2>🚧 Add-on Work in Progress 🚧</h2>
+  <h2>🚧 This Add-on Is Currently Being Completely Rewritten 🚧</h2>
     <a href="https://github.com/Maro-3D/DOGS/archive/refs/heads/main.zip" style="font-size: 20px; font-weight: bold;">➡️ Download the Add-on Here! ⬅️</a>
   <p><strong>!!! The addon is still in early stages of developent so keep that in mind !!!</strong></p>
 </div>
