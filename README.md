@@ -45,7 +45,7 @@ This add-on enhances Blender's functionality with a focus on VR model preparatio
 - Armature creation
 - Scene and armature statistics
 - Mesh editing
-- Export options to game engines and texture software
+- Export options to game engines and texture software (WIP)
 
 ### Acknowledgements
 
