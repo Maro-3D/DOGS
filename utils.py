@@ -66,7 +66,7 @@ def get_performance_stats(armature_name, rating_mode):
         objects = [obj for obj in bpy.context.visible_objects]
 
         # Get all armatures in the scene
-        armatures = [obj for obj in bpy.context.scene.objects if obj.type == 'ARMATURE']
+        armatures = [obj for obj in bpy.context.visible_objects if obj.type == 'ARMATURE']
 
         # Sum up the bone counts of all armatures
         for armature in armatures:

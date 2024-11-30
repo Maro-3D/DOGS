@@ -32,26 +32,6 @@ class DOGS_PT_panel(Panel):
         row.prop(scene, 'selected_collection', text="Collection to export", icon="OUTLINER_COLLECTION")
 
 
-        # ----------------- Avatar Armature -----------------
-
-        # Add the dropdown menu for 'selected_armature'
-        layout.alignment = 'CENTER'
-        layout.label(text="Armature for performance rating.", icon='OUTLINER_OB_ARMATURE')
-        layout.separator()
-        row = layout.row(align=True)
-        row.alignment = 'RIGHT'
-        row.prop(scene, 'selected_armature', text="Avatar Armature", icon="ARMATURE_DATA")
-        
-        # Add toggle button for additional options
-        row.prop(scene, "show_extra_armature_options", text="", icon='DOWNARROW_HLT' if scene.show_extra_armature_options else 'RIGHTARROW')
-       
-        if scene.show_extra_armature_options:
-            box = layout.box()
-            box.label(text="Add Armatures", icon='OUTLINER_OB_ARMATURE')
-            box.operator('add_armature.operator', text="Basic Humanoid", icon='ADD').armature_type = 'Basic'
-            box.operator('add_armature.operator', text="Extended Humanoid", icon='ADD').armature_type = 'Extended'
-            box.operator('add_armature.operator', text="Digitigrade Humanoid", icon='ADD').armature_type = 'Digitigrade'
-        layout.separator()
 
 # Panel for Mesh Stats of the avatar
 class STATS_PT_panel(Panel):
@@ -73,12 +53,36 @@ class STATS_PT_panel(Panel):
 
         stats = utils.get_performance_stats(selected_armature, rating_mode)
 
+
+
+        # ----------------- Avatar Armature -----------------
+
+        # Add the dropdown menu for 'selected_armature'
         row = layout.row(align=True)
+        row.alignment = 'CENTER'
+        row.prop(scene, 'selected_armature', text="Avatar Armature", icon="ARMATURE_DATA")
+        
+        # Add toggle button for additional options
+        row.prop(scene, "show_extra_armature_options", text="", icon='DOWNARROW_HLT' if scene.show_extra_armature_options else 'RIGHTARROW')
+       
+        if scene.show_extra_armature_options:
+            box = layout.box()
+            box.label(text="Add Armatures", icon='OUTLINER_OB_ARMATURE')
+            box.operator('add_armature.operator', text="Basic Humanoid", icon='ADD').armature_type = 'Basic'
+            box.operator('add_armature.operator', text="Extended Humanoid", icon='ADD').armature_type = 'Extended'
+            box.operator('add_armature.operator', text="Digitigrade Humanoid", icon='ADD').armature_type = 'Digitigrade'
+        layout.separator()
+
+        # ----------------- Rating Modes -----------------
+
+        box = layout.box()
+        row = box.row(align=True)
+        
         row.label(text=f"Rating mode: ")
         row.prop(scene, 'device_mode', expand=True)
 
         
-        box = layout.box()
+
         row = box.row(align=True)
 
         row.label(text=f"Rating for: ")
