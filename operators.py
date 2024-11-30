@@ -14,21 +14,31 @@ class SimpleExportOperator(bpy.types.Operator):
     bl_label = 'Simple Export Operator'
 
     def execute(self, context):
-        selected_coll = context.scene.selected_collection
-
+        selected_coll_name = context.scene.selected_collection
+        selected_coll = bpy.data.collections.get(selected_coll_name)
+        
         if selected_coll:
             self.active_selected_collection = selected_coll
-            if hasattr(bpy.ops.collection, 'export_all'):
+            if hasattr(selected_coll, 'exporters') and selected_coll.exporters:
+               
+                # Collect exporter names
+                exporter_names = [exp.name for exp in selected_coll.exporters]
+                
+                # Export all exporters
                 bpy.ops.collection.export_all()
+                
                 # Include the exporter names in the success message
                 exporter_names_str = ", ".join(exporter_names)
                 self.report({'INFO'}, f"Successfully exported collection: '{selected_coll.name}' using exporters: {exporter_names_str}")
+                
+                return {'FINISHED'}
+            
             else:
-                self.report({'ERROR'}, "No valid export operator found.")
-            context.view_layer.active_selected_colllection = original_collection
+                self.report({'ERROR'}, f"No exporters found for the collection: '{selected_coll.name}'. To set them up, navigate to the Collection Properties and add them in the 'Exporters' submenu.")
+                return {'CANCELLED'}
         else:
-            self.report({'WARNING'}, "Could not find the layer collection for exporting.")
-
+            self.report({'ERROR'}, "No collection selected in the 'Collection to Export' dropdown!")
+            return {'CANCELLED'}
 
 class AddArmatureOperator(bpy.types.Operator):
     """Add a predefined armature into the scene"""

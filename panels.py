@@ -28,8 +28,9 @@ class DOGS_PT_panel(Panel):
         layout.separator()
         row = layout.row(align=True)
         
-        row.alignment = 'RIGHT'
+        row.alignment = 'CENTER'
         row.prop(scene, 'selected_collection', text="Collection to export", icon="OUTLINER_COLLECTION")
+        layout.separator()
 
 
 
