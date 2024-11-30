@@ -36,7 +36,7 @@ def register():
         name="Rating Mode",
         description="Rating for",
         items=[
-            ('SCENE', "Scene", "While rating the performance takes in to accout all the objects in the current scene", 'SCENE_DATA',1),
+            ('SCENE', "Scene", "While rating the performance takes in to accout all visible objects in the current scene", 'SCENE_DATA',1),
             ('ARMATURE', "Armature", "While rating the performance takes in to accout only objects paranted to the selected avatar armature", 'ARMATURE_DATA',2)
         ],
         default='SCENE'
