@@ -19,17 +19,17 @@ class DOGS_PT_panel(Panel):
 
         #needs to be fixed up next relese
         # ----------------- Export Avatar -----------------
-        #row = layout.row(align=True)
-        #row.scale_y = 2.0
+        row = layout.row(align=True)
+        row.scale_y = 2.0
         # Use the correct operator
-        #row.operator('export.simple_export', text="Export Avatar Collection", icon='EXPORT',)
+        row.operator('export.simple_export', text="Export Avatar Collection", icon='EXPORT',)
 
         # Add the dropdown menu for colelctions with exporters
-        #layout.separator()
-        #row = layout.row(align=True)
+        layout.separator()
+        row = layout.row(align=True)
         
-        #row.alignment = 'RIGHT'
-        #row.prop(scene, 'selected_collection', text="Collection to export", icon="OUTLINER_COLLECTION")
+        row.alignment = 'RIGHT'
+        row.prop(scene, 'selected_collection', text="Collection to export", icon="OUTLINER_COLLECTION")
 
 
         # ----------------- Avatar Armature -----------------
