@@ -324,8 +324,9 @@ class WEIGHTPAINT_BONE_MODES_PT(bpy.types.Panel):
             if is_bone_influence_mode:
                 row = layout.row()
                 box_row = row.row(align=True)
+                box_row = layout.box()
                 box_row.operator("object.find_influencing_bones", text="Show Influencing Bones", icon="ZOOM_SELECTED")
-                box_row.operator('object.show_all_bones', text="", icon='LOOP_BACK')
+                box_row.operator('object.show_all_bones', icon='LOOP_BACK')
 
         else:
             layout.label(text="No armature found.", icon="ERROR")

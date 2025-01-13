@@ -523,15 +523,19 @@ class OBJECT_OT_toggle_weight_paint_mode(bpy.types.Operator):
     bl_label = "Toggle Weight Paint Mode"
     bl_options = {'UNDO'}
 
+    # --------------------------------------------------------------------
+    # Operator Properties
+    # --------------------------------------------------------------------
+
     trigger_from_ui: bpy.props.BoolProperty(
         name="Trigger from UI",
-        description="Determine if operator is triggered from UI or shortcut",
+        description="Whether this operator is triggered by a UI button or by a shortcut",
         default=False
     )
 
     parent_method: bpy.props.EnumProperty(
         name="Parenting Method",
-        description="Choose how to parent the mesh to the armature",
+        description="How to parent the mesh to the armature",
         items=[
             ('ARMATURE_AUTO', "Automatic Weights", ""),
             ('ARMATURE_ENVELOPE', "Envelope Weights", ""),
@@ -541,10 +545,10 @@ class OBJECT_OT_toggle_weight_paint_mode(bpy.types.Operator):
     )
 
     def armature_items(self, context):
-        items = [(obj.name, obj.name, "") for obj in bpy.data.objects if obj.type == 'ARMATURE']
-        if not items:
-            items = [('None', 'None', 'No armatures available')]
-        return items
+        armatures = [(arm.name, arm.name, "") for arm in bpy.data.objects if arm.type == 'ARMATURE']
+        if not armatures:
+            armatures = [('None', 'None', 'No armatures available')]
+        return armatures
 
     armature_to_parent: bpy.props.EnumProperty(
         name="Armature",
@@ -553,208 +557,307 @@ class OBJECT_OT_toggle_weight_paint_mode(bpy.types.Operator):
     )
 
     def mesh_items(self, context):
-        items = [(obj.name, obj.name, "") for obj in bpy.context.scene.objects if obj.type == 'MESH']
-        if not items:
-            items = [('None', 'None', 'No meshes available')]
-        return items
+        meshes = [(m.name, m.name, "") for m in bpy.data.objects if m.type == 'MESH']
+        if not meshes:
+            meshes = [('None', 'None', 'No meshes available')]
+        return meshes
 
     mesh_to_paint: bpy.props.EnumProperty(
         name="Mesh",
-        description="Select a mesh to parent to the armature",
+        description="Select a mesh to paint",
         items=mesh_items
     )
-    
 
-    def execute(self, context):
+    # --------------------------------------------------------------------
+    # Invoke
+    # --------------------------------------------------------------------
+
+    def invoke(self, context, event):
+        """
+        Called first. If triggered by a shortcut (Alt+Q), we do a ray-cast.
+        Then we decide whether to show a popup or go straight to execute().
+        """
+        if not self.trigger_from_ui:
+            # Shortcut usage (Alt+Q)
+            self.obj_under_cursor = self.get_object_under_cursor(context, event)
+            print("Shortcut invoked. Object under cursor:", self.obj_under_cursor)
+        else:
+            # UI button usage
+            self.obj_under_cursor = None
+            print("UI button invoked. Active object:", context.active_object)
+
+        return self.decide_invoke_flow(context)
+
+    def decide_invoke_flow(self, context):
+        """
+        Decide if we should show a properties dialog or run execute() directly.
+        """
         obj = context.active_object
-        current_mode = context.mode
-
-        # If the active object is not valid
-        if not obj or obj.type not in {'MESH', 'ARMATURE'}:
-            self.report({'WARNING'}, "Active object must be a Mesh or an Armature.")
+        if not obj:
+            self.report({'WARNING'}, "No active object!")
             return {'CANCELLED'}
 
-        # Toggle modes based on the active object's type and current mode
-        if current_mode == 'PAINT_WEIGHT':
-            # If already in Weight Paint mode, decide based on the object type
-            if obj.type == 'MESH':
-                # Switch back to Object mode
-                bpy.ops.object.mode_set(mode='OBJECT')
-                armature = self.find_armature(obj)
-                armature.select_set(False)
-                print("vypnuto")
-            elif obj.type == 'ARMATURE':
-                # Look for a parented mesh and switch to Weight Paint mode
-                meshes = [child for child in obj.children if child.type == 'MESH']
-                if meshes:
-                    self.switch_to_weight_paint(meshes[0], obj, context)
-
-            
-            return {'FINISHED'}
-
-        # Ensure Object mode for setup
-        if current_mode != 'OBJECT':
-            bpy.ops.object.mode_set(mode='OBJECT')
-
-        # Handle the case when the active object is a Mesh
         if obj.type == 'MESH':
-            armature = self.find_armature(obj)
-            if armature:
-                self.switch_to_weight_paint(obj, armature, context)
+            arm = self.find_armature(obj)
+            # If mesh already has an armature, no need for a popup
+            if arm:
+                return self.execute(context)
             else:
-                if not self.armature_to_parent:
-                    self.report({'WARNING'}, "Please select an armature.")
-                    return {'CANCELLED'}
-                else:
-                    armature_name = self.armature_to_parent
-                    armature = bpy.data.objects.get(armature_name)
-                    if not armature or armature.type != 'ARMATURE':
-                        self.report({'WARNING'}, "Please select a valid armature.")
-                        return {'CANCELLED'}
-                    self.parent_mesh_to_armature(obj, armature)
-                    self.switch_to_weight_paint(obj, armature, context)
-        elif obj.type == 'ARMATURE':
-            # Handle the case when the active object is an Armature
-            meshes = [child for child in obj.children if child.type == 'MESH']
-            if meshes:
-                self.switch_to_weight_paint(meshes[0], obj, context)
-            else:
-                self.report({'WARNING'}, "No mesh parented to the armature.")
-                return {'CANCELLED'}
+                # No armature -> show popup so user can pick
+                return context.window_manager.invoke_props_dialog(self)
 
-        return {'FINISHED'}
+        elif obj.type == 'ARMATURE':
+            # If armature has 0 or multiple meshes, we might need a popup
+            meshes = [child for child in obj.children if child.type == 'MESH']
+            if len(meshes) == 1:
+                # Exactly one mesh -> directly execute
+                return self.execute(context)
+            else:
+                # 0 or multiple -> show popup
+                return context.window_manager.invoke_props_dialog(self)
+
+        else:
+            self.report({'WARNING'}, "Active object must be a mesh or armature.")
+            return {'CANCELLED'}
+
+    # --------------------------------------------------------------------
+    # Draw (Popup UI)
+    # --------------------------------------------------------------------
 
     def draw(self, context):
         layout = self.layout
         obj = context.active_object
 
+        # 1) Mesh with no armature
         if obj.type == 'MESH' and not self.find_armature(obj):
             layout.label(text="Mesh is not parented to an armature.")
-            layout.prop(self, "armature_to_parent")
-            layout.prop(self, "parent_method")
+            layout.prop(self, "armature_to_parent", text="Armature to Parent")
+            layout.prop(self, "parent_method", text="Parent Method")
+
+        # 2) Armature with no child meshes or multiple child meshes
         elif obj.type == 'ARMATURE':
             meshes = [child for child in obj.children if child.type == 'MESH']
             if not meshes:
-                layout.label(text="No meshes parented to the armature.")
+                layout.label(text="No meshes parented to this armature.")
                 layout.prop(self, "mesh_to_paint")
                 layout.prop(self, "parent_method")
             elif len(meshes) > 1:
-                layout.label(text="Select a Mesh that you would like to switch to:")
+                layout.label(text="Multiple child meshes found. Select one:")
                 layout.prop(self, "mesh_to_paint")
-            else:
-                # Only one mesh parented, no need to draw anything
-                pass
 
-    def invoke(self, context, event):
-        
-        if not self.trigger_from_ui:
-            # Perform ray casting only when NOT triggered from the UI
-            obj = self.get_object_under_cursor(context,event)
-            print("Raycast shot down: ", obj)
-        else: 
-            obj = context.active_object
-            print("No Raycast shot down: ", obj)
-        
+        else:
+            # Fallback so we never get a blank popup
+            layout.label(text=f"No specific UI for: {obj.name} ({obj.type})")
+
+    # --------------------------------------------------------------------
+    # Execute (Main Logic)
+    # --------------------------------------------------------------------
+
+    def execute(self, context):
+        obj = context.active_object
         if not obj:
-            self.report({'WARNING'}, "No mesh selected!")
+            self.report({'WARNING'}, "No active object to process.")
             return {'CANCELLED'}
-        
+
+        current_mode = context.mode
+
+        # A) Already in Weight Paint Mode
+        if current_mode == 'PAINT_WEIGHT':
+            return self.handle_already_in_weight_paint(context, obj)
+
+        # B) Not in Weight Paint -> go to Object Mode
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        # If it's a MESH
         if obj.type == 'MESH':
-            armature = self.find_armature(obj)
-            if armature:
-                # No need to show dialog
-                return self.execute(context)
+            arm = self.find_armature(obj)
+            if arm:
+                # Already parented -> switch to weight paint
+                self.switch_to_weight_paint(obj, arm, context)
+                return {'FINISHED'}
             else:
-                # Need to show dialog
-                return context.window_manager.invoke_props_dialog(self)
+                # Possibly user just chose an armature in the popup
+                if self.armature_to_parent and self.armature_to_parent != 'None':
+                    new_arm = bpy.data.objects.get(self.armature_to_parent)
+                    if new_arm and new_arm.type == 'ARMATURE':
+                        self.parent_mesh_to_armature(obj, new_arm)
+                        self.switch_to_weight_paint(obj, new_arm, context)
+                        return {'FINISHED'}
+
+                self.report({'INFO'}, "No armature selected. Doing nothing.")
+                return {'CANCELLED'}
+
+        # If it's an ARMATURE
         elif obj.type == 'ARMATURE':
             meshes = [child for child in obj.children if child.type == 'MESH']
             if not meshes:
-                # No meshes parented, need to select one
-                return context.window_manager.invoke_props_dialog(self)
-            elif len(meshes) == 1:
-                # Only one mesh, proceed
-                return self.execute(context)
+                self.report({'WARNING'}, "Armature has no child meshes.")
+                return {'CANCELLED'}
+
+            # If user selected a mesh in the popup
+            chosen_mesh = None
+            if self.mesh_to_paint and self.mesh_to_paint != 'None':
+                chosen_mesh = bpy.data.objects.get(self.mesh_to_paint)
+                if chosen_mesh is None:
+                    self.report({'WARNING'}, "Could not find the chosen mesh.")
+                    return {'CANCELLED'}
             else:
-                # Multiple meshes, need to select one
-                return context.window_manager.invoke_props_dialog(self)
-        
-        else:
-            
+                # Default to first child if not specified
+                chosen_mesh = meshes[0]
+
+            self.switch_to_weight_paint(chosen_mesh, obj, context)
+            return {'FINISHED'}
+
+        self.report({'WARNING'}, "Active object must be mesh or armature.")
+        return {'CANCELLED'}
+
+    # --------------------------------------------------------------------
+    # Handle Alt+Q while Already in Weight Paint
+    # --------------------------------------------------------------------
+
+    def handle_already_in_weight_paint(self, context, current_obj):
+        # If triggered by a UI button, just exit Weight Paint
+        if self.trigger_from_ui:
+            bpy.ops.object.mode_set(mode='OBJECT')
+            #Just for debug
+            #self.report({'INFO'}, "Exited Weight Paint (UI button).")
+            return {'FINISHED'}
+
+        # Otherwise, check the object under cursor
+        new_obj = getattr(self, "obj_under_cursor", None)
+
+        # 1) Same mesh -> do nothing
+        if new_obj == current_obj:
+            #Just for debug
+            #self.report({'INFO'}, "Already painting this mesh. Doing nothing.")
             return {'CANCELLED'}
 
+        # 2) Different object
+        if new_obj and new_obj != current_obj:
+            # Exit Weight Paint on the old object
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+            # Deselect all
+            bpy.ops.object.select_all(action='DESELECT')
+
+            # Select the new object
+            new_obj.select_set(True)
+            context.view_layer.objects.active = new_obj
+
+            if new_obj.type == 'MESH':
+                arm = self.find_armature(new_obj)
+                if arm:
+                    self.switch_to_weight_paint(new_obj, arm, context)
+                    return {'FINISHED'}
+                else:
+                    # Show the popup instead of just reporting
+                    return self.invoke_dialog_for_unparented_mesh(context, new_obj)
+
+            elif new_obj.type == 'ARMATURE':
+                # If the armature has child meshes
+                meshes = [m for m in new_obj.children if m.type == 'MESH']
+                if meshes:
+                    self.switch_to_weight_paint(meshes[0], new_obj, context)
+                else:
+                    self.report({'WARNING'}, "This armature has no child meshes.")
+                return {'FINISHED'}
+
+        # 3) No object under cursor -> **DO NOTHING**, remain in Weight Paint
+        self.report({'INFO'}, "No object under the cursor to switch to.")
+        return {'CANCELLED'}
+
+    def invoke_dialog_for_unparented_mesh(self, context, new_mesh):
+        """
+        Switches to OBJECT mode, selects 'new_mesh' as active,
+        then invokes the popup so the user can parent it.
+        """
+        if context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        # Make sure only new_mesh is selected/active
+        bpy.ops.object.select_all(action='DESELECT')
+        new_mesh.select_set(True)
+        context.view_layer.objects.active = new_mesh
+
+        # Now invoke the props dialog, which calls .draw() -> letting user pick armature
+        return context.window_manager.invoke_props_dialog(self)
+
+    # --------------------------------------------------------------------
+    # Utility Functions
+    # --------------------------------------------------------------------
+
     def switch_to_weight_paint(self, mesh, armature, context):
-        #Make sure mesh and armature are visible
+        """
+        Deselect everything, show both, make mesh active, and enter Weight Paint.
+        """
+        if context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        bpy.ops.object.select_all(action='DESELECT')
+
         armature.hide_viewport = False
         armature.hide_set(False)
         mesh.hide_viewport = False
         mesh.hide_set(False)
 
-        # Ensure both mesh and armature are selected, with mesh active
-        #bpy.ops.object.select_all(action='DESELECT')
         mesh.select_set(True)
         armature.select_set(True)
         context.view_layer.objects.active = mesh
 
-
-        # Switch to Edit mode to deselect all vertices, then switch to Weight Paint mode
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action='DESELECT')
         bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
 
-        # Set it as the active vertex group
-        active_bone = bpy.context.active_pose_bone
-        
-        # Set the vertex group corresponding to the active bone as active
+        # Optionally, match active bone -> vertex group
+        active_bone = getattr(context, 'active_pose_bone', None)
         if active_bone and active_bone.name in mesh.vertex_groups:
-            vertex_group = mesh.vertex_groups[active_bone.name]  # Corrected this line
-            mesh.vertex_groups.active = vertex_group  # Set the active vertex group
+            mesh.vertex_groups.active = mesh.vertex_groups[active_bone.name]
 
-        # Adjust viewport and tool settings
-        if context.space_data.type == 'VIEW_3D':
+        # Optional overlay settings
+        if context.space_data and context.space_data.type == 'VIEW_3D':
             context.space_data.overlay.weight_paint_mode_opacity = 1
-
         context.scene.tool_settings.vertex_group_user = 'ACTIVE'
-        
-        #Still considering if this should be on by default for now turned off
-        #context.scene.tool_settings.use_auto_normalize = True
 
     def find_armature(self, mesh):
-        # Check parent
+        """
+        Returns the armature object if 'mesh' is parented or has an Armature modifier.
+        Otherwise returns None.
+        """
         if mesh.parent and mesh.parent.type == 'ARMATURE':
             return mesh.parent
-        # Check modifiers
         for mod in mesh.modifiers:
             if mod.type == 'ARMATURE' and mod.object:
                 return mod.object
         return None
 
     def parent_mesh_to_armature(self, mesh, armature):
+        """
+        Parents 'mesh' to 'armature' using parent_method property.
+        """
         bpy.ops.object.select_all(action='DESELECT')
         mesh.select_set(True)
         armature.select_set(True)
         bpy.context.view_layer.objects.active = armature
+
         bpy.ops.object.parent_set(type=self.parent_method)
 
     def get_object_under_cursor(self, context, event):
-        """Utility function to get the object under the cursor"""
+        """
+        Ray-cast in a 3D View to find the object under the mouse cursor.
+        Returns None if no object is under the cursor.
+        """
         region = context.region
         rv3d = context.space_data.region_3d
-
-        # Get the 2D mouse coordinates from the event
         coord = (event.mouse_region_x, event.mouse_region_y)
 
-        # Convert 2D mouse coordinates to a 3D ray
         view_vector = region_2d_to_vector_3d(region, rv3d, coord)
         ray_origin = region_2d_to_origin_3d(region, rv3d, coord)
 
-        # Perform a ray cast
         result, location, normal, index, obj, matrix = context.scene.ray_cast(
             context.evaluated_depsgraph_get(),
             ray_origin,
             view_vector
         )
-
         return obj if result else None
 
 class WeightGradientOperator(bpy.types.Operator):
@@ -947,6 +1050,7 @@ class ToggleWeightBrushMode(bpy.types.Operator):
         return {'FINISHED'}
 
 class OBJECT_OT_FindInfluencingBones(bpy.types.Operator):
+    """Shows only the bones that influance the selected mesh"""
     bl_idname = "object.find_influencing_bones"
     bl_label = "Find Influencing Bones"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1010,6 +1114,7 @@ class OBJECT_OT_FindInfluencingBones(bpy.types.Operator):
         return {'FINISHED'}
 
 class OBJECT_OT_TogglePaintMaskAndTool(bpy.types.Operator):
+    """Toggele between Bone influance mode and Weigpaint mode """
     bl_idname = "object.toggle_paint_mask_and_tool"
     bl_label = "Toggle Paint Mask and Tool"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1041,9 +1146,14 @@ class OBJECT_OT_TogglePaintMaskAndTool(bpy.types.Operator):
             mesh_data.use_paint_mask = True
             if current_tool != desired_tool:
                 bpy.ops.wm.tool_set_by_id(name=desired_tool)
+            
+            #Just for debug
+            #self.report({'INFO'}, "States set to desired values.")
 
-            self.report({'INFO'}, "States set to desired values.")
         else:
+            #deselect all to not confuse the user why he can't weightpaint
+            bpy.ops.paint.face_select_all(action='DESELECT')
+            
             # Restore the original states
             mesh_data.use_paint_mask = bpy.types.Scene._original_use_paint_mask
             bpy.ops.wm.tool_set_by_id(name=bpy.types.Scene._original_tool_idname)
@@ -1052,7 +1162,8 @@ class OBJECT_OT_TogglePaintMaskAndTool(bpy.types.Operator):
             del bpy.types.Scene._original_use_paint_mask
             del bpy.types.Scene._original_tool_idname
 
-            self.report({'INFO'}, "Original states restored.")
+            #Just for debug
+            #self.report({'INFO'}, "Original states restored.")
 
         return {'FINISHED'}
 
@@ -1266,6 +1377,7 @@ class OBJECT_OT_ResetPose(bpy.types.Operator):
         return {'FINISHED'}
 
 class OBJECT_OT_ShowAllBones(bpy.types.Operator):
+    """Unhides all bones in the active armature"""
     bl_idname = "object.show_all_bones"
     bl_label = "Unhide All Bones"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1284,7 +1396,7 @@ class OBJECT_OT_ShowAllBones(bpy.types.Operator):
             bone.bone.select = True
             bone.bone.hide = False  # UnHide all bones
 
-        self.report({'INFO'}, f"All Bones Shown")
+        self.report({'INFO'}, f"All Bones Shown.")
         return {'FINISHED'}
 
 
