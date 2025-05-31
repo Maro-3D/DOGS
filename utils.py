@@ -127,13 +127,15 @@ def get_rating(stats, device_mode):
 # Function to get icon based on value and limits
 def get_icon(value, limits):
     if value == 0:
-        return 'SEQUENCE_COLOR_09'
+        return 'STRIP_COLOR_09'
     elif value <= limits[0]:
-        return 'SEQUENCE_COLOR_04'
+        return 'STRIP_COLOR_04'
     elif value <= limits[1]:
-        return 'SEQUENCE_COLOR_02'
+        return 'STRIP_COLOR_02'
     else:
-        return 'SEQUENCE_COLOR_01'
+        return 'STRIP_COLOR_01'
+
+
 
 # Function to update the brush setting to weightpaint through mesh
 def update_brush_settings(context):
