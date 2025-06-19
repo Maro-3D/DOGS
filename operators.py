@@ -1348,7 +1348,7 @@ class OBJECT_OT_ResetPose(bpy.types.Operator):
         active_object = context.object
         
         if active_object.name != selected_armature_name:
-            armature_name = context.scene.selected_armature
+            armature_name = context.scene.selected_armature.name
             armature = bpy.data.objects.get(armature_name)
         
         else:
