@@ -14,8 +14,7 @@ class SimpleExportOperator(bpy.types.Operator):
     bl_label = 'Simple Export Operator'
 
     def execute(self, context):
-        selected_coll_name = context.scene.selected_collection
-        selected_coll = bpy.data.collections.get(selected_coll_name)
+        selected_coll = context.scene.selected_collection
         
         if selected_coll:
             self.active_selected_collection = selected_coll

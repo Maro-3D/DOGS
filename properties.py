@@ -1,5 +1,5 @@
 import bpy
-from bpy.props import EnumProperty, BoolProperty
+from bpy.props import EnumProperty, BoolProperty, StringProperty
 from . import utils
 
 def register():
@@ -9,10 +9,11 @@ def register():
         items=utils.armature_items,
     )
     
-    bpy.types.Scene.selected_collection = EnumProperty(
+    bpy.types.Scene.selected_collection = bpy.props.PointerProperty(
         name="Selected Export Collection",
-        description="Collection that has at least one exporter set up",
-        items=utils.collection_items,
+        type=bpy.types.Collection,  # This defines the type of object we are selecting (Collection)
+        #poll=collection_poll  # Poll function to ensure only collections are selectable
+        poll=utils.collection_items
     )
 
     bpy.types.Scene.show_extra_armature_options = BoolProperty(
