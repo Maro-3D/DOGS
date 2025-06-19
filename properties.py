@@ -1,18 +1,18 @@
 import bpy
-from bpy.props import EnumProperty, BoolProperty, StringProperty
+from bpy.props import EnumProperty, BoolProperty, PointerProperty
 from . import utils
 
 def register():
-    bpy.types.Scene.selected_armature = EnumProperty(
+    bpy.types.Scene.selected_armature = PointerProperty(
         name="Selected Armature",
         description="Armature of the avatar you want the performance statistics for",
-        items=utils.armature_items,
+        type=bpy.types.Armature,
+        poll=utils.armature_items,
     )
-    
-    bpy.types.Scene.selected_collection = bpy.props.PointerProperty(
+
+    bpy.types.Scene.selected_collection = PointerProperty(
         name="Selected Export Collection",
         type=bpy.types.Collection,  # This defines the type of object we are selecting (Collection)
-        #poll=collection_poll  # Poll function to ensure only collections are selectable
         poll=utils.collection_items
     )
 

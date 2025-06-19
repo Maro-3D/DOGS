@@ -49,10 +49,15 @@ class STATS_PT_panel(Panel):
 
         selected_armature = scene.selected_armature
 
+        if selected_armature:
+            selected_armature_name = selected_armature.name
+        else:
+            selected_armature_name = None
+
         device_mode = scene.device_mode
         rating_mode = scene.rating_mode
 
-        stats = utils.get_performance_stats(selected_armature, rating_mode)
+        stats = utils.get_performance_stats(selected_armature_name, rating_mode)
 
 
 

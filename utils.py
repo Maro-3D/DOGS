@@ -47,10 +47,11 @@ def get_performance_stats(armature_name, rating_mode):
     bone_count = 0
     skinned_meshes = 0
 
-    if rating_mode == 'ARMATURE':
+    if rating_mode == 'ARMATURE' and armature_name:
         armature = bpy.data.objects.get(armature_name)
-        if not armature or armature.type != 'ARMATURE':
-            print(f"No armature found with name '{armature_name}'")
+        
+        if armature.type != 'ARMATURE':
+            #print(f"No armature found with name '{armature_name}'")
             return None
 
         # Check if the armature is in Edit Mode
@@ -76,7 +77,7 @@ def get_performance_stats(armature_name, rating_mode):
             else:
                 bone_count += len(armature.data.bones)
     else:
-        print(f"Invalid rating_mode: '{rating_mode}'")
+        #print(f"Invalid rating_mode: '{rating_mode}'")
         return None
 
     # Get the evaluated dependency graph for accurate data
